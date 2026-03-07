@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<ruleset name="Pompom Docblock Lint">
+    <description>Require class and public method docblocks.</description>
+
+    <file>src</file>
+    <file>tests</file>
+
+    <!-- Require a docblock before every class -->
+    <rule ref="Squiz.Commenting.ClassComment"/>
+
+    <!-- Require a docblock before every function and method -->
+    <rule ref="Squiz.Commenting.FunctionComment"/>
+
+    <!-- Max 120 characters per line -->
+    <rule ref="Generic.Files.LineLength">
+        <properties>
+            <property name="lineLimit" value="120"/>
+            <property name="absoluteLineLimit" value="120"/>
+        </properties>
+    </rule>
+</ruleset>
