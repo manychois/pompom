@@ -7,6 +7,7 @@ namespace Manychois\Pompom;
 use Dom\HTMLDocument;
 use Dom\Node;
 use Generator;
+use LogicException;
 
 /**
  * Base class for all Pompom DOM components.
@@ -24,8 +25,18 @@ abstract class AbstractComponent
     /** @var array<string, mixed> */
     protected array $props = [];
     private mixed $childrenContent = null;
+    private bool $hasChildrenContent = false;
+    /** @var null|list<Node> */
+    private ?array $resolvedChildren = null;
+    private bool $childrenCalled = false;
     /** @var array<string, mixed> */
     private array $regionContents = [];
+    /** @var array<string, bool> */
+    private array $hasRegionContents = [];
+    /** @var list<string> */
+    private array $calledRegions = [];
+    /** @var array<string, list<Node>> */
+    private array $resolvedRegions = [];
 
     /**
      * @param HTMLDocument $document The DOM document for this component.
@@ -57,11 +68,33 @@ abstract class AbstractComponent
     }
 
     /**
-     * Implementations must yield output (mixed); the engine converts each item to a node.
+     * Returns the children content provided by the owner component.
      *
-     * @return Generator<int, mixed, mixed, void>
+     * @param mixed $fallback Used when no children were provided (yields nodes for this value).
+     * @return list<Node> List of DOM nodes representing the children content.
      */
-    abstract protected function getContent(): Generator;
+    final protected function children(mixed $fallback = null): array
+    {
+        if ($this->childrenCalled) {
+            throw new LogicException('children() can only be called once.');
+        }
+        $this->resolveChildren();
+        $this->childrenCalled = true;
+
+        $result = $this->resolvedChildren;
+        assert($result !== null);
+        $this->resolvedChildren = [];
+
+        if (count($result) === 0) {
+            $result = [];
+            $generator = $this->engine->contentResolver->toNodes($this->document, $fallback);
+            foreach ($generator as $node) {
+                $result[] = $node;
+            }
+        }
+
+        return $result;
+    }
 
     /**
      * @param string       $name     Component name (resolved by the engine).
@@ -90,40 +123,98 @@ abstract class AbstractComponent
     }
 
     /**
-     * Returns the children content provided by the owner component.
+     * Implementations must yield output (mixed); the engine converts each item to a node.
      *
-     * @return list<Node> List of DOM nodes representing the children content.
+     * @return Generator<int, mixed, mixed, void>
      */
-    final protected function children(): array
+    abstract protected function getContent(): Generator;
+
+    /**
+     * Whether the owner component provided any children content.
+     *
+     * @return boolean
+     */
+    final protected function hasChildren(): bool
     {
-        if ($this->childrenContent === null) {
-            return [];
-        }
-        $nodes = [];
-        foreach ($this->engine->contentResolver->toNodes($this->document, $this->childrenContent) as $node) {
-            $nodes[] = $node;
-        }
-        $this->childrenContent = null;
-        return $nodes;
+        $this->resolveChildren();
+        return $this->hasChildrenContent;
+    }
+
+    /**
+     * Whether the owner component provided content for the given region.
+     *
+     * @param string $name Region name.
+     * @return boolean
+     */
+    final protected function hasRegion(string $name): bool
+    {
+        $this->resolveRegion($name);
+        return $this->hasRegionContents[$name];
     }
 
     /**
      * Returns the content for a named region provided by the owner component.
      *
-     * @param string $name Region name.
+     * @param string $name     Region name.
+     * @param mixed  $fallback Used when no content was provided for the region (yields nodes).
      * @return list<Node> List of DOM nodes representing the region content.
      */
-    final protected function region(string $name): array
+    final protected function region(string $name, mixed $fallback = null): array
     {
-        $content = $this->regionContents[$name] ?? null;
-        if ($content === null) {
-            return [];
+        if (in_array($name, $this->calledRegions, true)) {
+            throw new LogicException(sprintf('Region "%s" can only be called once.', $name));
         }
-        $nodes = [];
-        foreach ($this->engine->contentResolver->toNodes($this->document, $content) as $node) {
-            $nodes[] = $node;
+        $this->resolveRegion($name);
+        $this->calledRegions[] = $name;
+        $result = $this->resolvedRegions[$name];
+        $this->resolvedRegions[$name] = [];
+
+        if (count($result) === 0) {
+            $result = [];
+            foreach ($this->engine->contentResolver->toNodes($this->document, $fallback) as $node) {
+                $result[] = $node;
+            }
         }
-        unset($this->regionContents[$name]);
-        return $nodes;
+
+        return $result;
+    }
+
+    /**
+     * Resolves raw children content to a list of nodes (once).
+     *
+     * @return void
+     */
+    private function resolveChildren(): void
+    {
+        if ($this->resolvedChildren === null) {
+            $nodes = [];
+            $generator = $this->engine->contentResolver->toNodes($this->document, $this->childrenContent);
+            foreach ($generator as $node) {
+                $nodes[] = $node;
+            }
+            $this->resolvedChildren = $nodes;
+            $this->childrenContent = null;
+            $this->hasChildrenContent = count($nodes) > 0;
+        }
+    }
+
+    /**
+     * Resolves raw region content for the given name to a list of nodes (once).
+     *
+     * @param string $name Region name.
+     * @return void
+     */
+    private function resolveRegion(string $name): void
+    {
+        if (!\array_key_exists($name, $this->resolvedRegions)) {
+            $nodes = [];
+            $generator = $this->engine->contentResolver->toNodes($this->document, $this->regionContents[$name] ?? null);
+            foreach ($generator as $node) {
+                $nodes[] = $node;
+            }
+            $this->resolvedRegions[$name] = $nodes;
+            unset($this->regionContents[$name]);
+            $this->hasRegionContents[$name] = count($nodes) > 0;
+        }
     }
 }

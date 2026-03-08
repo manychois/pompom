@@ -22,7 +22,7 @@ final class Psr4ComponentResolver implements ComponentResolverInterface
      * @param array<string, string> $namespaces Base namespace (key) to base directory path (value).
      */
     public function __construct(
-        private readonly array $namespaces,
+        public readonly array $namespaces,
     ) {
     }
 

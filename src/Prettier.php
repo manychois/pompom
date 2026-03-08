@@ -209,7 +209,18 @@ class Prettier
         'wbr',
     ];
 
-    protected string $indent = '  ';
+    /** @var array<int, string> */
+    private array $indentCache = [];
+
+    protected string $indentStyle = '  ' {
+        get {
+            return $this->indentStyle;
+        }
+        set {
+            $this->indentCache = [];
+            $this->indentStyle = $value;
+        }
+    }
 
     /**
      * Insert whitespace into the document so saveHTML() output is indented.
@@ -237,6 +248,21 @@ class Prettier
         } else {
             $this->formatElement($document, $root, 0);
         }
+    }
+
+    /**
+     * Returns newline plus indent string for the given depth (cached).
+     *
+     * @param integer $depth Indent level (number of indent units).
+     * @return string
+     */
+    protected function getIndent(int $depth): string
+    {
+        if (!isset($this->indentCache[$depth])) {
+            $this->indentCache[$depth] = "\n" . str_repeat($this->indentStyle, $depth);
+        }
+
+        return $this->indentCache[$depth];
     }
 
     /**
@@ -295,6 +321,87 @@ class Prettier
     }
 
     /**
+     * Insert newline+indent after the given element's closing tag (position 3: after-end).
+     *
+     * @param HTMLDocument $document Document to create the text node from.
+     * @param Element      $element  Element to insert after (parent is derived from it).
+     * @param integer      $depth    Indent level (number of indent units).
+     * @return void
+     */
+    protected function indentAfterEnd(HTMLDocument $document, Element $element, int $depth): void
+    {
+        $parent = $element->parentNode;
+        if ($parent === null) {
+            return;
+        }
+        $next = $element->nextSibling;
+        if ($next instanceof Text) {
+            $next->data = $this->getIndent($depth) . ltrim($next->data);
+        } else {
+            $node = $document->createTextNode($this->getIndent($depth));
+            $parent->insertBefore($node, $next);
+        }
+    }
+
+    /**
+     * Insert newline+indent after the element's open tag, before first child (position 1: after-start).
+     *
+     * @param HTMLDocument $document Document to create the text node from.
+     * @param Element      $element  Element (must have at least one child).
+     * @param integer      $depth    Indent level (number of indent units).
+     * @return void
+     */
+    protected function indentAfterStart(HTMLDocument $document, Element $element, int $depth): void
+    {
+        $first = $element->firstChild;
+        if ($first instanceof Text) {
+            $first->data = $this->getIndent($depth) . ltrim($first->data);
+        } else {
+            $element->insertBefore($document->createTextNode($this->getIndent($depth)), $first);
+        }
+    }
+
+    /**
+     * Insert newline+indent after the element's last child, before closing tag (position 2: before-end).
+     *
+     * @param HTMLDocument $document Document to create the text node from.
+     * @param Element      $element  Element (must have at least one child).
+     * @param integer      $depth    Indent level (number of indent units).
+     * @return void
+     */
+    protected function indentBeforeEnd(HTMLDocument $document, Element $element, int $depth): void
+    {
+        $last = $element->lastChild;
+        if ($last instanceof Text) {
+            $last->data = rtrim($last->data) . $this->getIndent($depth);
+        } else {
+            $element->appendChild($document->createTextNode($this->getIndent($depth)));
+        }
+    }
+
+    /**
+     * Insert newline+indent before the given element (position 0: before-start).
+     *
+     * @param HTMLDocument $document Document to create the text node from.
+     * @param Element      $element  Element to insert before (parent is derived from it).
+     * @param integer      $depth    Indent level (number of indent units).
+     * @return void
+     */
+    protected function indentBeforeStart(HTMLDocument $document, Element $element, int $depth): void
+    {
+        $parent = $element->parentNode;
+        if ($parent === null) {
+            return;
+        }
+        $prev = $element->previousSibling;
+        if ($prev instanceof Text) {
+            $prev->data = rtrim($prev->data) . $this->getIndent($depth);
+        } else {
+            $parent->insertBefore($document->createTextNode($this->getIndent($depth)), $element);
+        }
+    }
+
+    /**
      * Format a single element and its children (insert newlines/indent per pattern).
      *
      * @param HTMLDocument $document Document to create text nodes from.
@@ -302,7 +409,7 @@ class Prettier
      * @param integer      $depth    Nesting depth (0 = root).
      * @return void
      */
-    private function formatElement(HTMLDocument $document, Element $element, int $depth): void
+    protected function formatElement(HTMLDocument $document, Element $element, int $depth): void
     {
         $pattern = $this->getPattern($element->localName);
         [$beforeStart, $afterStart, $beforeEnd, $afterEnd] = $pattern;
@@ -326,91 +433,6 @@ class Prettier
         }
         if ($afterEnd) {
             $this->indentAfterEnd($document, $element, $depth);
-        }
-    }
-
-    /**
-     * Insert newline+indent before the given element (position 0: before-start).
-     *
-     * @param HTMLDocument $document Document to create the text node from.
-     * @param Element      $element  Element to insert before (parent is derived from it).
-     * @param integer      $depth    Indent level (number of indent units).
-     * @return void
-     */
-    protected function indentBeforeStart(HTMLDocument $document, Element $element, int $depth): void
-    {
-        $parent = $element->parentNode;
-        if ($parent === null) {
-            return;
-        }
-        $prev = $element->previousSibling;
-        $indent = "\n" . str_repeat($this->indent, $depth);
-        if ($prev instanceof Text) {
-            $prev->data = rtrim($prev->data) . $indent;
-        } else {
-            $parent->insertBefore($document->createTextNode($indent), $element);
-        }
-    }
-
-    /**
-     * Insert newline+indent after the element's open tag, before first child (position 1: after-start).
-     *
-     * @param HTMLDocument $document Document to create the text node from.
-     * @param Element      $element  Element (must have at least one child).
-     * @param integer      $depth    Indent level (number of indent units).
-     * @return void
-     */
-    protected function indentAfterStart(HTMLDocument $document, Element $element, int $depth): void
-    {
-        $indent = "\n" . str_repeat($this->indent, $depth);
-        $first = $element->firstChild;
-        if ($first instanceof Text) {
-            $first->data = $indent . ltrim($first->data);
-        } else {
-            $element->insertBefore($document->createTextNode($indent), $first);
-        }
-    }
-
-    /**
-     * Insert newline+indent after the element's last child, before closing tag (position 2: before-end).
-     *
-     * @param HTMLDocument $document Document to create the text node from.
-     * @param Element      $element  Element (must have at least one child).
-     * @param integer      $depth    Indent level (number of indent units).
-     * @return void
-     */
-    protected function indentBeforeEnd(HTMLDocument $document, Element $element, int $depth): void
-    {
-        $indent = "\n" . str_repeat($this->indent, $depth);
-        $last = $element->lastChild;
-        if ($last instanceof Text) {
-            $last->data = rtrim($last->data) . $indent;
-        } else {
-            $element->appendChild($document->createTextNode($indent));
-        }
-    }
-
-    /**
-     * Insert newline+indent after the given element's closing tag (position 3: after-end).
-     *
-     * @param HTMLDocument $document Document to create the text node from.
-     * @param Element      $element  Element to insert after (parent is derived from it).
-     * @param integer      $depth    Indent level (number of indent units).
-     * @return void
-     */
-    protected function indentAfterEnd(HTMLDocument $document, Element $element, int $depth): void
-    {
-        $parent = $element->parentNode;
-        if ($parent === null) {
-            return;
-        }
-        $indent = "\n" . str_repeat($this->indent, $depth);
-        $next = $element->nextSibling;
-        if ($next instanceof Text) {
-            $next->data = $indent . ltrim($next->data);
-        } else {
-            $node = $document->createTextNode($indent);
-            $parent->insertBefore($node, $next);
         }
     }
 }
