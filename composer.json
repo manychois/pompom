@@ -29,7 +29,8 @@
     "phpunit/phpunit": "^11.5.55",
     "phpstan/phpstan": "^2.1.40",
     "phpstan/phpstan-strict-rules": "^2.0",
-    "squizlabs/php_codesniffer": "^4.0"
+    "squizlabs/php_codesniffer": "^4.0",
+    "slevomat/coding-standard": "*"
   },
   "minimum-stability": "stable",
   "prefer-stable": true,
@@ -37,5 +38,10 @@
     "test": "phpunit",
     "analyse": "phpstan analyse -c phpstan.neon.dist",
     "lint": "phpcs -p"
+  },
+  "config": {
+    "allow-plugins": {
+      "dealerdirect/phpcodesniffer-composer-installer": true
+    }
   }
 }

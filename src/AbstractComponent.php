@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Manychois\Pompom;
 
 use Dom\HTMLDocument;
+use Dom\Node;
 use Generator;
 
 /**
@@ -20,6 +21,11 @@ abstract class AbstractComponent
     public const PROP_REGIONS = __CLASS__ . '::REGIONS';
 
     protected readonly NodeFactory $nodeFactory;
+    /** @var array<string, mixed> */
+    protected array $props = [];
+    private mixed $childrenContent = null;
+    /** @var array<string, mixed> */
+    private array $regionContents = [];
 
     /**
      * @param HTMLDocument $document The DOM document for this component.
@@ -36,42 +42,88 @@ abstract class AbstractComponent
      * Implementations must yield output (mixed); the engine converts each item to a node.
      *
      * @param array<string, mixed> $props Render-time properties (e.g. from the engine).
-     * @return Generator<int, mixed, mixed, void>
+     * @return Generator<int, Node, mixed, void>
      */
-    abstract public function render(array $props = []): Generator;
+    final public function render(array $props = []): Generator
+    {
+        $this->childrenContent = $props[self::PROP_CHILDREN] ?? null;
+        // @phpstan-ignore assign.propertyType
+        $this->regionContents = $props[self::PROP_REGIONS] ?? [];
+        unset($props[self::PROP_CHILDREN], $props[self::PROP_REGIONS]);
+        $this->props = $props;
+        foreach ($this->getContent() as $content) {
+            yield from $this->engine->contentResolver->toNodes($this->document, $content);
+        }
+    }
 
     /**
-     * @param string               $name  Component name (resolved by the engine).
-     * @param array<string, mixed> $props Default props for the component.
+     * Implementations must yield output (mixed); the engine converts each item to a node.
+     *
+     * @return Generator<int, mixed, mixed, void>
+     */
+    abstract protected function getContent(): Generator;
+
+    /**
+     * @param string       $name     Component name (resolved by the engine).
+     * @param array<mixed> $props    Default props for the component.
+     * @param mixed        $children Children content or null.
+     * @param mixed        $regions  Regions content or null.
      * @return ComponentBuilder
      */
-    final protected function component(string $name, array $props = []): ComponentBuilder
-    {
+    final protected function component(
+        string $name,
+        array $props = [],
+        mixed $children = null,
+        mixed $regions = [],
+    ): ComponentBuilder {
+        if (in_array('...', $props, true)) {
+            unset($props['...']);
+            $props = array_merge($this->props, $props);
+        }
+        $props[self::PROP_CHILDREN] = $children;
+        $props[self::PROP_REGIONS] = $regions;
+
+        /**
+         * @var array<string, mixed> $props
+         */
         return new ComponentBuilder($name, $props);
     }
 
     /**
-     * Returns the children content from render props (set by ComponentBuilder).
+     * Returns the children content provided by the owner component.
      *
-     * @param array<string, mixed> $props Render props passed to run().
-     * @return mixed Children content or null.
+     * @return list<Node> List of DOM nodes representing the children content.
      */
-    final protected function placeChildren(array $props): mixed
+    final protected function children(): array
     {
-        return $props[self::PROP_CHILDREN] ?? null;
+        if ($this->childrenContent === null) {
+            return [];
+        }
+        $nodes = [];
+        foreach ($this->engine->contentResolver->toNodes($this->document, $this->childrenContent) as $node) {
+            $nodes[] = $node;
+        }
+        $this->childrenContent = null;
+        return $nodes;
     }
 
     /**
-     * Returns the content for a named region from render props (set by ComponentBuilder).
+     * Returns the content for a named region provided by the owner component.
      *
-     * @param string               $name  Region name (e.g. 'head').
-     * @param array<string, mixed> $props Render props passed to run().
-     * @return mixed Region content or null.
+     * @param string $name Region name.
+     * @return list<Node> List of DOM nodes representing the region content.
      */
-    final protected function placeRegion(string $name, array $props): mixed
+    final protected function region(string $name): array
     {
-        $regions = $props[self::PROP_REGIONS] ?? [];
-        assert(is_array($regions));
-        return $regions[$name] ?? null;
+        $content = $this->regionContents[$name] ?? null;
+        if ($content === null) {
+            return [];
+        }
+        $nodes = [];
+        foreach ($this->engine->contentResolver->toNodes($this->document, $content) as $node) {
+            $nodes[] = $node;
+        }
+        unset($this->regionContents[$name]);
+        return $nodes;
     }
 }

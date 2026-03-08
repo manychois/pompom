@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Manychois\Pompom;
 
 use Closure;
+use Dom\Element;
 use Dom\HTMLDocument;
 use Dom\Node;
 use Generator;
@@ -30,6 +31,34 @@ final class ContentResolver implements ContentResolverInterface
     #region implements ContentResolverInterface
 
     /**
+     * Sets or removes an attribute on an element.
+     *
+     * @param Element $element The element to change.
+     * @param mixed   $name    Attribute name (must be string).
+     * @param mixed   $value   Attribute value (scalar) or null to remove.
+     * @return void
+     */
+    public function changeAttributes(Element $element, mixed $name, mixed $value): void
+    {
+        if (!is_string($name)) {
+            $msg = sprintf('Attribute name must be a string, got %s.', get_debug_type($name));
+            throw new \InvalidArgumentException($msg);
+        }
+
+        if ($value === null) {
+            $element->removeAttribute($name);
+            return;
+        }
+
+        if (\is_scalar($value)) {
+            $element->setAttribute($name, (string) $value);
+        } else {
+            $msg = sprintf('Cannot convert %s to an attribute value.', get_debug_type($value));
+            throw new \InvalidArgumentException($msg);
+        }
+    }
+
+    /**
      * Converts mixed content to zero or more Dom\Node.
      *
      * - string|int|float|bool: yields one text node.
@@ -45,7 +74,7 @@ final class ContentResolver implements ContentResolverInterface
      */
     public function toNodes(HTMLDocument $document, mixed $content): Generator
     {
-        if ($content === null) {
+        if ($content === null || $content === '') {
             // do nothing
         } elseif ($content instanceof Node) {
             yield $content;

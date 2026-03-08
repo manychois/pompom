@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Manychois\Pompom;
 
+use Dom\Element;
 use Dom\HTMLDocument;
 use Dom\Node;
 use Generator;
@@ -15,6 +16,15 @@ use Generator;
  */
 interface ContentResolverInterface
 {
+    /**
+     * Changes the attributes of an element.
+     * @param Element $element The element to change the attributes of.
+     * @param mixed   $name    The name of the attribute to change.
+     * @param mixed   $value   The value of the attribute to change.
+     * @return void
+     */
+    public function changeAttributes(Element $element, mixed $name, mixed $value): void;
+
     /**
      * Converts mixed content to zero or more Dom\Node for the given document.
      *

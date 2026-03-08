@@ -51,13 +51,9 @@ final class Engine
     {
         $document = HTMLDocument::createEmpty();
 
-        $componentClass = $this->components->resolve($componentName);
-        $component = $this->instantiateComponent($componentClass, $document);
-
-        foreach ($component->render($props) as $item) {
-            foreach ($this->contentResolver->toNodes($document, $item) as $node) {
-                $document->appendChild($node);
-            }
+        $component = $this->getComponent($componentName, $document);
+        foreach ($component->render($props) as $node) {
+            $document->appendChild($node);
         }
 
         return $document;

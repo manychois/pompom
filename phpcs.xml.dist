@@ -18,4 +18,11 @@
             <property name="absoluteLineLimit" value="120"/>
         </properties>
     </rule>
+
+    <!-- Unused use statements; consider docblocks/annotations as usage -->
+    <rule ref="SlevomatCodingStandard.Namespaces.UnusedUses">
+        <properties>
+            <property name="searchAnnotations" value="true"/>
+        </properties>
+    </rule>
 </ruleset>
