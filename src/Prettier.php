@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Manychois\Pompom;
 
+use Dom\Comment;
 use Dom\Element;
 use Dom\HTMLDocument;
+use Dom\Node;
 use Dom\Text;
 
 /**
@@ -35,6 +37,7 @@ class Prettier
      * - After start tag: yes
      * - Before end tag: yes
      * - After end tag: no
+     *
      * @var list<string>
      */
     protected array $ooox = [];
@@ -45,6 +48,7 @@ class Prettier
      * - After start tag: yes
      * - Before end tag: no
      * - After end tag: yes
+     *
      * @var list<string>
      */
     protected array $ooxo = [];
@@ -55,6 +59,7 @@ class Prettier
      * - After start tag: yes
      * - Before end tag: no
      * - After end tag: no
+     *
      * @var list<string>
      */
     protected array $ooxx = [];
@@ -65,6 +70,7 @@ class Prettier
      * - After start tag: no
      * - Before end tag: yes
      * - After end tag: yes
+     *
      * @var list<string>
      */
     protected array $oxoo = [];
@@ -75,6 +81,7 @@ class Prettier
      * - After start tag: no
      * - Before end tag: yes
      * - After end tag: no
+     *
      * @var list<string>
      */
     protected array $oxox = [];
@@ -85,6 +92,7 @@ class Prettier
      * - After start tag: no
      * - Before end tag: no
      * - After end tag: yes
+     *
      * @var list<string>
      */
     protected array $oxxo = [
@@ -99,6 +107,7 @@ class Prettier
      * - After start tag: no
      * - Before end tag: no
      * - After end tag: no
+     *
      * @var list<string>
      */
     protected array $oxxx = [];
@@ -109,6 +118,7 @@ class Prettier
      * - After start tag: yes
      * - Before end tag: yes
      * - After end tag: yes
+     *
      * @var list<string>
      */
     protected array $xooo = [];
@@ -119,6 +129,7 @@ class Prettier
      * - After start tag: yes
      * - Before end tag: yes
      * - After end tag: no
+     *
      * @var list<string>
      */
     protected array $xoox = [];
@@ -129,6 +140,7 @@ class Prettier
      * - After start tag: yes
      * - Before end tag: no
      * - After end tag: yes
+     *
      * @var list<string>
      */
     protected array $xoxo = [];
@@ -139,6 +151,7 @@ class Prettier
      * - After start tag: yes
      * - Before end tag: no
      * - After end tag: no
+     *
      * @var list<string>
      */
     protected array $xoxx = [];
@@ -149,6 +162,7 @@ class Prettier
      * - After start tag: no
      * - Before end tag: yes
      * - After end tag: yes
+     *
      * @var list<string>
      */
     protected array $xxoo = [];
@@ -159,6 +173,7 @@ class Prettier
      * - After start tag: no
      * - Before end tag: yes
      * - After end tag: no
+     *
      * @var list<string>
      */
     protected array $xxox = [];
@@ -169,6 +184,7 @@ class Prettier
      * - After start tag: no
      * - Before end tag: no
      * - After end tag: yes
+     *
      * @var list<string>
      */
     protected array $xxxo = ['br'];
@@ -179,6 +195,7 @@ class Prettier
      * - After start tag: no
      * - Before end tag: no
      * - After end tag: no
+     *
      * @var list<string>
      */
     protected array $xxxx = [
@@ -212,6 +229,9 @@ class Prettier
     /** @var array<int, string> */
     private array $indentCache = [];
 
+    /** @var array<string, array{0: bool, 1: bool, 2: bool, 3: bool}> */
+    private array $elementPatternMap = [];
+
     protected string $indentStyle = '  ' {
         get {
             return $this->indentStyle;
@@ -226,7 +246,6 @@ class Prettier
      * Insert whitespace into the document so saveHTML() output is indented.
      *
      * @param HTMLDocument $document Document to format.
-     * @return void
      */
     public function format(HTMLDocument $document): void
     {
@@ -234,6 +253,8 @@ class Prettier
         if ($root === null) {
             return;
         }
+
+        $this->compilePatterns();
 
         if ($root->localName === 'html') {
             $this->indentAfterStart($document, $root, 0);
@@ -251,10 +272,71 @@ class Prettier
     }
 
     /**
+     * Format a comment node (insert newlines/indent per pattern).
+     *
+     * @param HTMLDocument $document Document to create text nodes from.
+     * @param Comment      $comment  Comment node to format.
+     * @param int          $depth    Nesting depth (0 = root).
+     */
+    protected function formatComment(HTMLDocument $document, Comment $comment, int $depth): void
+    {
+        $this->indentBeforeStart($document, $comment, $depth);
+        $this->indentAfterEnd($document, $comment, $depth);
+    }
+
+    /**
+     * Format a single element and its children (insert newlines/indent per pattern).
+     *
+     * @param HTMLDocument $document Document to create text nodes from.
+     * @param Element      $element  Element to format.
+     * @param int          $depth    Nesting depth (0 = root).
+     */
+    protected function formatElement(HTMLDocument $document, Element $element, int $depth): void
+    {
+        $pattern = $this->elementPatternMap[$element->localName] ?? [true, true, true, true];
+        [$beforeStart, $afterStart, $beforeEnd, $afterEnd] = $pattern;
+
+        if ($beforeStart) {
+            $this->indentBeforeStart($document, $element, $depth);
+        }
+        if ($element->hasChildNodes()) {
+            if ($afterStart) {
+                $this->indentAfterStart($document, $element, $depth + 1);
+            }
+            foreach ($element->childNodes as $child) {
+                $this->formatNode($document, $child, $depth + 1);
+            }
+            if ($beforeEnd) {
+                $this->indentBeforeEnd($document, $element, $depth);
+            }
+        }
+        if ($afterEnd) {
+            $this->indentAfterEnd($document, $element, $depth);
+        }
+    }
+
+    /**
+     * Format a single node (element or comment) according to the indent pattern.
+     *
+     * @param HTMLDocument $document Document to create text nodes from.
+     * @param Node         $node     Node to format.
+     * @param int          $depth    Nesting depth (0 = root).
+     */
+    protected function formatNode(HTMLDocument $document, Node $node, int $depth): void
+    {
+        if ($node instanceof Element) {
+            $this->formatElement($document, $node, $depth);
+        } elseif ($node instanceof Comment) {
+            $this->formatComment($document, $node, $depth);
+        }
+    }
+
+    /**
      * Returns newline plus indent string for the given depth (cached).
      *
-     * @param integer $depth Indent level (number of indent units).
-     * @return string
+     * @param int $depth Indent level (number of indent units).
+     *
+     * @return string Newline plus indent string for the given depth.
      */
     protected function getIndent(int $depth): string
     {
@@ -266,75 +348,19 @@ class Prettier
     }
 
     /**
-     * @param string $localName Element local name (e.g. "div", "span").
-     * @return array{0: bool, 1: bool, 2: bool, 3: bool} 0=before-start, 1=after-start, 2=before-end, 3=after-end.
-     */
-    protected function getPattern(string $localName): array
-    {
-        if (in_array($localName, $this->xxxx, true)) {
-            return [false, false, false, false];
-        }
-        if (in_array($localName, $this->xxxo, true)) {
-            return [false, false, false, true];
-        }
-        if (in_array($localName, $this->xxox, true)) {
-            return [false, false, true, false];
-        }
-        if (in_array($localName, $this->xxoo, true)) {
-            return [false, false, true, true];
-        }
-        if (in_array($localName, $this->xoxx, true)) {
-            return [false, true, false, false];
-        }
-        if (in_array($localName, $this->xoxo, true)) {
-            return [false, true, false, true];
-        }
-        if (in_array($localName, $this->xoox, true)) {
-            return [false, true, true, false];
-        }
-        if (in_array($localName, $this->xooo, true)) {
-            return [false, true, true, true];
-        }
-        if (in_array($localName, $this->oxxx, true)) {
-            return [true, false, false, false];
-        }
-        if (in_array($localName, $this->oxxo, true)) {
-            return [true, false, false, true];
-        }
-        if (in_array($localName, $this->oxox, true)) {
-            return [true, false, true, false];
-        }
-        if (in_array($localName, $this->oxoo, true)) {
-            return [true, false, true, true];
-        }
-        if (in_array($localName, $this->ooxx, true)) {
-            return [true, true, false, false];
-        }
-        if (in_array($localName, $this->ooxo, true)) {
-            return [true, true, false, true];
-        }
-        if (in_array($localName, $this->ooox, true)) {
-            return [true, true, true, false];
-        }
-
-        return [true, true, true, true];
-    }
-
-    /**
-     * Insert newline+indent after the given element's closing tag (position 3: after-end).
+     * Insert newline+indent after the given node's closing tag (position 3: after-end).
      *
      * @param HTMLDocument $document Document to create the text node from.
-     * @param Element      $element  Element to insert after (parent is derived from it).
-     * @param integer      $depth    Indent level (number of indent units).
-     * @return void
+     * @param Node         $node     Node to insert after (parent is derived from it).
+     * @param int          $depth    Indent level (number of indent units).
      */
-    protected function indentAfterEnd(HTMLDocument $document, Element $element, int $depth): void
+    protected function indentAfterEnd(HTMLDocument $document, Node $node, int $depth): void
     {
-        $parent = $element->parentNode;
+        $parent = $node->parentNode;
         if ($parent === null) {
             return;
         }
-        $next = $element->nextSibling;
+        $next = $node->nextSibling;
         if ($next instanceof Text) {
             $next->data = $this->getIndent($depth) . ltrim($next->data);
         } else {
@@ -348,8 +374,7 @@ class Prettier
      *
      * @param HTMLDocument $document Document to create the text node from.
      * @param Element      $element  Element (must have at least one child).
-     * @param integer      $depth    Indent level (number of indent units).
-     * @return void
+     * @param int          $depth    Indent level (number of indent units).
      */
     protected function indentAfterStart(HTMLDocument $document, Element $element, int $depth): void
     {
@@ -366,8 +391,7 @@ class Prettier
      *
      * @param HTMLDocument $document Document to create the text node from.
      * @param Element      $element  Element (must have at least one child).
-     * @param integer      $depth    Indent level (number of indent units).
-     * @return void
+     * @param int          $depth    Indent level (number of indent units).
      */
     protected function indentBeforeEnd(HTMLDocument $document, Element $element, int $depth): void
     {
@@ -380,59 +404,58 @@ class Prettier
     }
 
     /**
-     * Insert newline+indent before the given element (position 0: before-start).
+     * Insert newline+indent before the given node (position 0: before-start).
      *
      * @param HTMLDocument $document Document to create the text node from.
-     * @param Element      $element  Element to insert before (parent is derived from it).
-     * @param integer      $depth    Indent level (number of indent units).
-     * @return void
+     * @param Node         $node     Node to insert before (parent is derived from it).
+     * @param int          $depth    Indent level (number of indent units).
      */
-    protected function indentBeforeStart(HTMLDocument $document, Element $element, int $depth): void
+    protected function indentBeforeStart(HTMLDocument $document, Node $node, int $depth): void
     {
-        $parent = $element->parentNode;
+        $parent = $node->parentNode;
         if ($parent === null) {
             return;
         }
-        $prev = $element->previousSibling;
+        $prev = $node->previousSibling;
         if ($prev instanceof Text) {
             $prev->data = rtrim($prev->data) . $this->getIndent($depth);
         } else {
-            $parent->insertBefore($document->createTextNode($this->getIndent($depth)), $element);
+            $parent->insertBefore($document->createTextNode($this->getIndent($depth)), $node);
         }
     }
 
     /**
-     * Format a single element and its children (insert newlines/indent per pattern).
-     *
-     * @param HTMLDocument $document Document to create text nodes from.
-     * @param Element      $element  Element to format.
-     * @param integer      $depth    Nesting depth (0 = root).
-     * @return void
+     * Compiles the element pattern map.
      */
-    protected function formatElement(HTMLDocument $document, Element $element, int $depth): void
+    private function compilePatterns(): void
     {
-        $pattern = $this->getPattern($element->localName);
-        [$beforeStart, $afterStart, $beforeEnd, $afterEnd] = $pattern;
+        $patterns = [
+            $this->xxxx,
+            $this->xxxo,
+            $this->xxox,
+            $this->xxoo,
+            $this->xoxx,
+            $this->xoxo,
+            $this->xoox,
+            $this->xooo,
+            $this->oxxx,
+            $this->oxxo,
+            $this->oxox,
+            $this->oxoo,
+            $this->ooxx,
+            $this->ooxo,
+            $this->ooox,
+        ];
 
-        if ($beforeStart) {
-            $this->indentBeforeStart($document, $element, $depth);
-        }
-        if ($element->hasChildNodes()) {
-            if ($afterStart) {
-                $this->indentAfterStart($document, $element, $depth + 1);
+        $this->elementPatternMap = [];
+        foreach ($patterns as $i => $pattern) {
+            $beforeStart = ($i & 0b1000) !== 0;
+            $afterStart  = ($i & 0b0100) !== 0;
+            $beforeEnd   = ($i & 0b0010) !== 0;
+            $afterEnd    = ($i & 0b0001) !== 0;
+            foreach ($pattern as $name) {
+                $this->elementPatternMap[$name] = [$beforeStart, $afterStart, $beforeEnd, $afterEnd];
             }
-            foreach ($element->childNodes as $child) {
-                if (!($child instanceof Element)) {
-                    continue;
-                }
-                $this->formatElement($document, $child, $depth + 1);
-            }
-            if ($beforeEnd) {
-                $this->indentBeforeEnd($document, $element, $depth);
-            }
-        }
-        if ($afterEnd) {
-            $this->indentAfterEnd($document, $element, $depth);
         }
     }
 }

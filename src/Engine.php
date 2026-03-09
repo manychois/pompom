@@ -29,7 +29,7 @@ final class Engine
         ?ContentResolverInterface $contentResolver = null,
         ?IContainer $container = null,
     ) {
-        $containerBuilder = new ContainerBuilder();
+        $containerBuilder = new ContainerBuilder;
         if ($container !== null) {
             $containerBuilder->wrapContainer($container);
         }
@@ -45,7 +45,8 @@ final class Engine
      *
      * @param string               $componentName Component identifier (resolved to a class by the components resolver).
      * @param array<string, mixed> $props         Properties to pass to the component.
-     * @return \DOM\HTMLDocument
+     *
+     * @return HTMLDocument The rendered document.
      */
     public function render(string $componentName, array $props = []): HTMLDocument
     {
@@ -64,7 +65,8 @@ final class Engine
      *
      * @param string       $componentName Component identifier (e.g. "hello-page").
      * @param HTMLDocument $document      Document to inject into the component.
-     * @return AbstractComponent
+     *
+     * @return AbstractComponent The resolved component.
      */
     public function getComponent(string $componentName, HTMLDocument $document): AbstractComponent
     {
@@ -79,8 +81,10 @@ final class Engine
      *
      * @param string       $componentClass Component class name from the components resolver.
      * @param HTMLDocument $document       Document to inject into the component.
+     *
+     * @return AbstractComponent The instantiated component.
+     *
      * @phpstan-param class-string<AbstractComponent> $componentClass
-     * @return AbstractComponent
      */
     private function instantiateComponent(
         string $componentClass,
@@ -88,7 +92,7 @@ final class Engine
     ): AbstractComponent {
         $instance = $this->container->make($componentClass, [
             'document' => $document,
-            'engine' => $this,
+            'engine'   => $this,
         ]);
         assert($instance instanceof AbstractComponent);
         return $instance;

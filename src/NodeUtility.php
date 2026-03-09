@@ -4,19 +4,18 @@ declare(strict_types=1);
 
 namespace Manychois\Pompom;
 
+use Closure;
+use Dom\Comment;
 use Dom\DocumentType;
 use Dom\Element;
 use Dom\HTMLDocument;
-use Dom\Text;
+use Dom\Node;
+use Generator;
 
 /**
- * Optional utility for creating DOM elements and text nodes from an HTML document.
- *
- * Accepts HTMLDocument and ContentResolverInterface in the constructor; use createElement(),
- * createText(), and createDoctype() to build nodes. Children in createElement() are
- * resolved via the content resolver (mixed to Node).
+ * Utility for manipulating DOM nodes.
  */
-final class NodeFactory
+class NodeUtility
 {
     /**
      * @param HTMLDocument             $document The HTML document to create nodes in.
@@ -25,18 +24,29 @@ final class NodeFactory
     public function __construct(
         private readonly HTMLDocument $document,
         private readonly ContentResolverInterface $contents,
-    ) {}
+    ) {
+    }
+
+    /**
+     * Creates a comment node.
+     *
+     * @param string $data Comment text content.
+     *
+     * @return Comment The created comment node.
+     */
+    public function createComment(string $data): Comment
+    {
+        return $this->document->createComment($data);
+    }
 
     /**
      * Creates a document type (DOCTYPE) node.
      *
-     * The returned node is not attached to the document; insert it (e.g. before the
-     * document element) with document->insertBefore($doctype, document->documentElement).
-     *
      * @param string $qualifiedName DTD name (e.g. "html" for <!DOCTYPE html>).
      * @param string $publicId      Public identifier of the external subset.
      * @param string $systemId      System identifier of the external subset.
-     * @return DocumentType
+     *
+     * @return DocumentType The created document type node.
      */
     public function createDoctype(
         string $qualifiedName = 'html',
@@ -57,6 +67,7 @@ final class NodeFactory
      *                                        If a string is given, it is treated as the class attribute.
      *                                        If value is null, the attribute is removed.
      * @param mixed               $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function createElement(
@@ -86,14 +97,50 @@ final class NodeFactory
     }
 
     /**
-     * Creates a text node from a string.
+     * Loops through all descendant elements of a given node.
      *
-     * @param string $content Text content.
-     * @return Text
+     * @param Node    $node   The node to loop through.
+     * @param Closure $filter The filter to apply to the nodes.
+     *
+     * @return Generator<int, Element, mixed, void> The descendant elements of the given node.
+     *
+     * @phpstan-param ?Closure(Element): bool $filter
      */
-    public function createText(string $content): Text
+    public function loopDescendantElements(Node $node, ?Closure $filter = null): Generator
     {
-        return $this->document->createTextNode($content);
+        $i = 0;
+        foreach ($this->loopDescendantNodes($node) as $n) {
+            if ($n instanceof Element) {
+                if ($filter === null || $filter($n)) {
+                    yield $i => $n;
+                    $i++;
+                }
+            }
+        }
+    }
+
+    /**
+     * Loops through all descendant nodes of a given node.
+     *
+     * @param Node    $node   The node to loop through.
+     * @param Closure $filter The filter to apply to the nodes.
+     *
+     * @return Generator<int, Node, mixed, void> The descendant nodes of the given node.
+     *
+     * @phpstan-param ?Closure(Node): bool $filter
+     */
+    public function loopDescendantNodes(Node $node, ?Closure $filter = null): Generator
+    {
+        $nodes = [...$node->childNodes];
+        while (count($nodes) > 0) {
+            $current = array_shift($nodes);
+            if ($filter === null || $filter($current)) {
+                yield $current;
+            }
+            if ($current->hasChildNodes()) {
+                array_unshift($nodes, ...$current->childNodes);
+            }
+        }
     }
 
     #region HTML5 standard elements
@@ -105,6 +152,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function a(string|array $attributes = [], mixed $children = null): Element
@@ -119,6 +167,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function abbr(string|array $attributes = [], mixed $children = null): Element
@@ -133,6 +182,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function address(string|array $attributes = [], mixed $children = null): Element
@@ -147,6 +197,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function article(string|array $attributes = [], mixed $children = null): Element
@@ -160,6 +211,7 @@ final class NodeFactory
      * @param string|array<string, mixed> $attributes Attributes of the element in key-value pairs.
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
+     *
      * @return Element The created element.
      */
     public function area(string|array $attributes = []): Element
@@ -174,6 +226,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function aside(string|array $attributes = [], mixed $children = null): Element
@@ -188,6 +241,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function audio(string|array $attributes = [], mixed $children = null): Element
@@ -202,6 +256,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function b(string|array $attributes = [], mixed $children = null): Element
@@ -215,6 +270,7 @@ final class NodeFactory
      * @param string|array<string, mixed> $attributes Attributes of the element in key-value pairs.
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
+     *
      * @return Element The created element.
      */
     public function base(string|array $attributes = []): Element
@@ -229,6 +285,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function bdi(string|array $attributes = [], mixed $children = null): Element
@@ -243,6 +300,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function bdo(string|array $attributes = [], mixed $children = null): Element
@@ -257,6 +315,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function blockquote(string|array $attributes = [], mixed $children = null): Element
@@ -271,6 +330,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function body(string|array $attributes = [], mixed $children = null): Element
@@ -284,6 +344,7 @@ final class NodeFactory
      * @param string|array<string, mixed> $attributes Attributes of the element in key-value pairs.
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
+     *
      * @return Element The created element.
      */
     public function br(string|array $attributes = []): Element
@@ -298,6 +359,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function button(string|array $attributes = [], mixed $children = null): Element
@@ -312,6 +374,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function canvas(string|array $attributes = [], mixed $children = null): Element
@@ -326,6 +389,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function caption(string|array $attributes = [], mixed $children = null): Element
@@ -340,6 +404,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function cite(string|array $attributes = [], mixed $children = null): Element
@@ -354,6 +419,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function code(string|array $attributes = [], mixed $children = null): Element
@@ -367,6 +433,7 @@ final class NodeFactory
      * @param string|array<string, mixed> $attributes Attributes of the element in key-value pairs.
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
+     *
      * @return Element The created element.
      */
     public function col(string|array $attributes = []): Element
@@ -381,6 +448,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function colgroup(string|array $attributes = [], mixed $children = null): Element
@@ -395,6 +463,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function data(string|array $attributes = [], mixed $children = null): Element
@@ -409,6 +478,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function datalist(string|array $attributes = [], mixed $children = null): Element
@@ -423,6 +493,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function dd(string|array $attributes = [], mixed $children = null): Element
@@ -437,6 +508,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function del(string|array $attributes = [], mixed $children = null): Element
@@ -451,6 +523,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function details(string|array $attributes = [], mixed $children = null): Element
@@ -465,6 +538,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function dfn(string|array $attributes = [], mixed $children = null): Element
@@ -479,6 +553,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function dialog(string|array $attributes = [], mixed $children = null): Element
@@ -493,6 +568,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function div(string|array $attributes = [], mixed $children = null): Element
@@ -507,6 +583,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function dl(string|array $attributes = [], mixed $children = null): Element
@@ -521,6 +598,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function dt(string|array $attributes = [], mixed $children = null): Element
@@ -535,6 +613,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function em(string|array $attributes = [], mixed $children = null): Element
@@ -548,6 +627,7 @@ final class NodeFactory
      * @param string|array<string, mixed> $attributes Attributes of the element in key-value pairs.
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
+     *
      * @return Element The created element.
      */
     public function embed(string|array $attributes = []): Element
@@ -562,6 +642,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function fieldset(string|array $attributes = [], mixed $children = null): Element
@@ -576,6 +657,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function figcaption(string|array $attributes = [], mixed $children = null): Element
@@ -590,6 +672,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function figure(string|array $attributes = [], mixed $children = null): Element
@@ -604,6 +687,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function footer(string|array $attributes = [], mixed $children = null): Element
@@ -618,6 +702,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function form(string|array $attributes = [], mixed $children = null): Element
@@ -632,6 +717,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function h1(string|array $attributes = [], mixed $children = null): Element
@@ -646,6 +732,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function h2(string|array $attributes = [], mixed $children = null): Element
@@ -660,6 +747,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function h3(string|array $attributes = [], mixed $children = null): Element
@@ -674,6 +762,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function h4(string|array $attributes = [], mixed $children = null): Element
@@ -688,6 +777,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function h5(string|array $attributes = [], mixed $children = null): Element
@@ -702,6 +792,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function h6(string|array $attributes = [], mixed $children = null): Element
@@ -716,6 +807,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function head(string|array $attributes = [], mixed $children = null): Element
@@ -730,6 +822,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function header(string|array $attributes = [], mixed $children = null): Element
@@ -743,6 +836,7 @@ final class NodeFactory
      * @param string|array<string, mixed> $attributes Attributes of the element in key-value pairs.
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
+     *
      * @return Element The created element.
      */
     public function hr(string|array $attributes = []): Element
@@ -757,6 +851,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function html(string|array $attributes = [], mixed $children = null): Element
@@ -771,6 +866,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function i(string|array $attributes = [], mixed $children = null): Element
@@ -785,6 +881,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function iframe(string|array $attributes = [], mixed $children = null): Element
@@ -798,6 +895,7 @@ final class NodeFactory
      * @param string|array<string, mixed> $attributes Attributes of the element in key-value pairs.
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
+     *
      * @return Element The created element.
      */
     public function img(string|array $attributes = []): Element
@@ -811,6 +909,7 @@ final class NodeFactory
      * @param string|array<string, mixed> $attributes Attributes of the element in key-value pairs.
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
+     *
      * @return Element The created element.
      */
     public function input(string|array $attributes = []): Element
@@ -825,6 +924,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function ins(string|array $attributes = [], mixed $children = null): Element
@@ -839,6 +939,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function kbd(string|array $attributes = [], mixed $children = null): Element
@@ -853,6 +954,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function label(string|array $attributes = [], mixed $children = null): Element
@@ -867,6 +969,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function legend(string|array $attributes = [], mixed $children = null): Element
@@ -880,6 +983,7 @@ final class NodeFactory
      * @param string|array<string, mixed> $attributes Attributes of the element in key-value pairs.
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
+     *
      * @return Element The created element.
      */
     public function link(string|array $attributes = []): Element
@@ -894,6 +998,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function li(string|array $attributes = [], mixed $children = null): Element
@@ -908,6 +1013,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function main(string|array $attributes = [], mixed $children = null): Element
@@ -922,6 +1028,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function map(string|array $attributes = [], mixed $children = null): Element
@@ -936,6 +1043,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function mark(string|array $attributes = [], mixed $children = null): Element
@@ -950,6 +1058,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function menu(string|array $attributes = [], mixed $children = null): Element
@@ -963,6 +1072,7 @@ final class NodeFactory
      * @param string|array<string, mixed> $attributes Attributes of the element in key-value pairs.
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
+     *
      * @return Element The created element.
      */
     public function meta(string|array $attributes = []): Element
@@ -977,6 +1087,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function meter(string|array $attributes = [], mixed $children = null): Element
@@ -991,6 +1102,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function nav(string|array $attributes = [], mixed $children = null): Element
@@ -1005,6 +1117,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function noscript(string|array $attributes = [], mixed $children = null): Element
@@ -1019,6 +1132,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function object(string|array $attributes = [], mixed $children = null): Element
@@ -1033,6 +1147,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function ol(string|array $attributes = [], mixed $children = null): Element
@@ -1047,6 +1162,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function optgroup(string|array $attributes = [], mixed $children = null): Element
@@ -1061,6 +1177,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function option(string|array $attributes = [], mixed $children = null): Element
@@ -1075,6 +1192,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function output(string|array $attributes = [], mixed $children = null): Element
@@ -1089,6 +1207,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function p(string|array $attributes = [], mixed $children = null): Element
@@ -1102,6 +1221,7 @@ final class NodeFactory
      * @param string|array<string, mixed> $attributes Attributes of the element in key-value pairs.
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
+     *
      * @return Element The created element.
      */
     public function param(string|array $attributes = []): Element
@@ -1116,6 +1236,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function picture(string|array $attributes = [], mixed $children = null): Element
@@ -1130,6 +1251,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function pre(string|array $attributes = [], mixed $children = null): Element
@@ -1144,6 +1266,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function progress(string|array $attributes = [], mixed $children = null): Element
@@ -1158,6 +1281,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function q(string|array $attributes = [], mixed $children = null): Element
@@ -1172,6 +1296,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function rp(string|array $attributes = [], mixed $children = null): Element
@@ -1186,6 +1311,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function rt(string|array $attributes = [], mixed $children = null): Element
@@ -1200,6 +1326,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function ruby(string|array $attributes = [], mixed $children = null): Element
@@ -1214,6 +1341,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function s(string|array $attributes = [], mixed $children = null): Element
@@ -1228,6 +1356,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function samp(string|array $attributes = [], mixed $children = null): Element
@@ -1242,6 +1371,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function script(string|array $attributes = [], mixed $children = null): Element
@@ -1256,6 +1386,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function section(string|array $attributes = [], mixed $children = null): Element
@@ -1270,6 +1401,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function select(string|array $attributes = [], mixed $children = null): Element
@@ -1284,6 +1416,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function small(string|array $attributes = [], mixed $children = null): Element
@@ -1297,6 +1430,7 @@ final class NodeFactory
      * @param string|array<string, mixed> $attributes Attributes of the element in key-value pairs.
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
+     *
      * @return Element The created element.
      */
     public function source(string|array $attributes = []): Element
@@ -1311,6 +1445,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function span(string|array $attributes = [], mixed $children = null): Element
@@ -1325,6 +1460,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function strong(string|array $attributes = [], mixed $children = null): Element
@@ -1339,6 +1475,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function style(string|array $attributes = [], mixed $children = null): Element
@@ -1353,6 +1490,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function sub(string|array $attributes = [], mixed $children = null): Element
@@ -1367,6 +1505,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function summary(string|array $attributes = [], mixed $children = null): Element
@@ -1381,6 +1520,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function sup(string|array $attributes = [], mixed $children = null): Element
@@ -1395,6 +1535,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function table(string|array $attributes = [], mixed $children = null): Element
@@ -1409,6 +1550,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function tbody(string|array $attributes = [], mixed $children = null): Element
@@ -1423,6 +1565,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function td(string|array $attributes = [], mixed $children = null): Element
@@ -1437,6 +1580,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function textarea(string|array $attributes = [], mixed $children = null): Element
@@ -1451,6 +1595,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function tfoot(string|array $attributes = [], mixed $children = null): Element
@@ -1465,6 +1610,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function th(string|array $attributes = [], mixed $children = null): Element
@@ -1479,6 +1625,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function thead(string|array $attributes = [], mixed $children = null): Element
@@ -1493,6 +1640,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function time(string|array $attributes = [], mixed $children = null): Element
@@ -1507,6 +1655,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function title(string|array $attributes = [], mixed $children = null): Element
@@ -1520,6 +1669,7 @@ final class NodeFactory
      * @param string|array<string, mixed> $attributes Attributes of the element in key-value pairs.
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
+     *
      * @return Element The created element.
      */
     public function track(string|array $attributes = []): Element
@@ -1534,6 +1684,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function tr(string|array $attributes = [], mixed $children = null): Element
@@ -1548,12 +1699,14 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function ul(string|array $attributes = [], mixed $children = null): Element
     {
         return $this->createElement('ul', $attributes, $children);
     }
+
     /**
      * Creates a `<video>` element.
      *
@@ -1561,6 +1714,7 @@ final class NodeFactory
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
      * @param mixed                       $children   Child nodes of the element.
+     *
      * @return Element The created element.
      */
     public function video(string|array $attributes = [], mixed $children = null): Element
@@ -1574,6 +1728,7 @@ final class NodeFactory
      * @param string|array<string, mixed> $attributes Attributes of the element in key-value pairs.
      *                                                If a string is given, it is treated as the class attribute.
      *                                                If value is null, the attribute is removed.
+     *
      * @return Element The created element.
      */
     public function wbr(string|array $attributes = []): Element

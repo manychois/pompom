@@ -17,7 +17,6 @@ interface ComponentResolverInterface
      * Returns whether the given identifier can be resolved.
      *
      * @param string $name Component identifier to check.
-     * @return boolean
      */
     public function has(string $name): bool;
 
@@ -25,7 +24,9 @@ interface ComponentResolverInterface
      * Resolves an identifier to the full component class name.
      *
      * @param string $name Component identifier to resolve.
+     *
      * @return class-string<AbstractComponent>
+     *
      * @throws \InvalidArgumentException When the name cannot be resolved.
      */
     public function resolve(string $name): string;

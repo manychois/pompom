@@ -14,27 +14,36 @@ use LogicException;
  *
  * Every component works with a shared Dom\HTMLDocument and is responsible
  * for yielding output (mixed; the engine converts each item to Dom\Node via ContentResolver).
- * Use NodeFactory (optional) for createElement() and createText().
+ * Use NodeUtility (optional) for createElement() and createText().
  */
 abstract class AbstractComponent
 {
-    public const PROP_CHILDREN = __CLASS__ . '::CHILDREN';
-    public const PROP_REGIONS = __CLASS__ . '::REGIONS';
+    public const string PROP_CHILDREN = self::class . '::CHILDREN';
+    public const string PROP_REGIONS = self::class . '::REGIONS';
 
-    protected readonly NodeFactory $nodeFactory;
+    protected readonly NodeUtility $nodeUtility;
+
     /** @var array<string, mixed> */
     protected array $props = [];
+
     private mixed $childrenContent = null;
+
     private bool $hasChildrenContent = false;
-    /** @var null|list<Node> */
+
+    /** @var list<Node>|null */
     private ?array $resolvedChildren = null;
+
     private bool $childrenCalled = false;
+
     /** @var array<string, mixed> */
     private array $regionContents = [];
+
     /** @var array<string, bool> */
     private array $hasRegionContents = [];
+
     /** @var list<string> */
     private array $calledRegions = [];
+
     /** @var array<string, list<Node>> */
     private array $resolvedRegions = [];
 
@@ -46,13 +55,14 @@ abstract class AbstractComponent
         public readonly HTMLDocument $document,
         public readonly Engine $engine,
     ) {
-        $this->nodeFactory = new NodeFactory($this->document, $this->engine->contentResolver);
+        $this->nodeUtility = new NodeUtility($this->document, $this->engine->contentResolver);
     }
 
     /**
      * Implementations must yield output (mixed); the engine converts each item to a node.
      *
      * @param array<string, mixed> $props Render-time properties (e.g. from the engine).
+     *
      * @return Generator<int, Node, mixed, void>
      */
     final public function render(array $props = []): Generator
@@ -71,7 +81,10 @@ abstract class AbstractComponent
      * Returns the children content provided by the owner component.
      *
      * @param mixed $fallback Used when no children were provided (yields nodes for this value).
+     *
      * @return list<Node> List of DOM nodes representing the children content.
+     *
+     * @throws LogicException When the children are called more than once.
      */
     final protected function children(mixed $fallback = null): array
     {
@@ -97,11 +110,14 @@ abstract class AbstractComponent
     }
 
     /**
+     * Creates a component builder.
+     *
      * @param string       $name     Component name (resolved by the engine).
      * @param array<mixed> $props    Default props for the component.
-     * @param mixed        $children Children content or null.
-     * @param mixed        $regions  Regions content or null.
-     * @return ComponentBuilder
+     * @param mixed        $children Optional children content.
+     * @param mixed        $regions  Optional region contents (key-value pairs).
+     *
+     * @return ComponentBuilder The component builder.
      */
     final protected function component(
         string $name,
@@ -113,26 +129,24 @@ abstract class AbstractComponent
             unset($props['...']);
             $props = array_merge($this->props, $props);
         }
+        /** @var array<string, mixed> $props */
         $props[self::PROP_CHILDREN] = $children;
         $props[self::PROP_REGIONS] = $regions;
 
-        /**
-         * @var array<string, mixed> $props
-         */
         return new ComponentBuilder($name, $props);
     }
 
     /**
      * Implementations must yield output (mixed); the engine converts each item to a node.
      *
-     * @return Generator<int, mixed, mixed, void>
+     * @return Generator<int, mixed, mixed, void> The content to render.
      */
     abstract protected function getContent(): Generator;
 
     /**
      * Whether the owner component provided any children content.
      *
-     * @return boolean
+     * @return bool Whether the owner component provided any children content.
      */
     final protected function hasChildren(): bool
     {
@@ -144,7 +158,8 @@ abstract class AbstractComponent
      * Whether the owner component provided content for the given region.
      *
      * @param string $name Region name.
-     * @return boolean
+     *
+     * @return bool Whether the owner component provided content for the given region.
      */
     final protected function hasRegion(string $name): bool
     {
@@ -157,7 +172,10 @@ abstract class AbstractComponent
      *
      * @param string $name     Region name.
      * @param mixed  $fallback Used when no content was provided for the region (yields nodes).
+     *
      * @return list<Node> List of DOM nodes representing the region content.
+     *
+     * @throws LogicException When the region is called more than once.
      */
     final protected function region(string $name, mixed $fallback = null): array
     {
@@ -181,8 +199,6 @@ abstract class AbstractComponent
 
     /**
      * Resolves raw children content to a list of nodes (once).
-     *
-     * @return void
      */
     private function resolveChildren(): void
     {
@@ -202,11 +218,10 @@ abstract class AbstractComponent
      * Resolves raw region content for the given name to a list of nodes (once).
      *
      * @param string $name Region name.
-     * @return void
      */
     private function resolveRegion(string $name): void
     {
-        if (!\array_key_exists($name, $this->resolvedRegions)) {
+        if (!array_key_exists($name, $this->resolvedRegions)) {
             $nodes = [];
             $generator = $this->engine->contentResolver->toNodes($this->document, $this->regionContents[$name] ?? null);
             foreach ($generator as $node) {

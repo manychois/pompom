@@ -37,7 +37,8 @@
   "scripts": {
     "test": "phpunit",
     "analyse": "phpstan analyse -c phpstan.neon.dist",
-    "lint": "phpcs -p"
+    "lint": "phpcs -ps",
+    "fix-lint": "phpcbf -ps"
   },
   "config": {
     "allow-plugins": {

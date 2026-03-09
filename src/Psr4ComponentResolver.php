@@ -19,6 +19,8 @@ final class Psr4ComponentResolver implements ComponentResolverInterface
     private array $cache = [];
 
     /**
+     * Creates a new PSR-4 component resolver.
+     *
      * @param array<string, string> $namespaces Base namespace (key) to base directory path (value).
      */
     public function __construct(
@@ -28,29 +30,18 @@ final class Psr4ComponentResolver implements ComponentResolverInterface
 
     #region implements ComponentResolverInterface
 
-    /**
-     * Returns whether the given name can be resolved (a matching class file exists).
-     *
-     * @param string $name Component name to check.
-     * @return boolean
-     */
+    /** @inheritDoc */
     public function has(string $name): bool
     {
         return $this->find($name) !== null;
     }
 
-    /**
-     * Resolves a name to the full component class name.
-     *
-     * @param string $name Component name to resolve.
-     * @return class-string<AbstractComponent>
-     * @throws InvalidArgumentException When no matching class file is found.
-     */
+    /** @inheritDoc */
     public function resolve(string $name): string
     {
         $class = $this->find($name);
         if ($class === null) {
-            throw new InvalidArgumentException("No component class found for name '{$name}'.");
+            throw new InvalidArgumentException(sprintf("No component class found for name '%s'.", $name));
         }
         return $class;
     }
@@ -62,7 +53,8 @@ final class Psr4ComponentResolver implements ComponentResolverInterface
      *
      * @param string $baseDir       Base directory path.
      * @param string $relativeClass Relative class name with backslashes.
-     * @return string
+     *
+     * @return string Class file path.
      */
     private function classFilepath(string $baseDir, string $relativeClass): string
     {
@@ -74,6 +66,7 @@ final class Psr4ComponentResolver implements ComponentResolverInterface
      * Finds the full class name for the given component name if a matching file exists.
      *
      * @param string $name Component name to resolve.
+     *
      * @return class-string<AbstractComponent>|null
      */
     private function find(string $name): ?string
@@ -103,14 +96,15 @@ final class Psr4ComponentResolver implements ComponentResolverInterface
      * Converts kebab-case segment to PascalCase.
      *
      * @param string $segment Kebab-case segment.
-     * @return string
+     *
+     * @return string Pascal-cased segment.
      */
     private function kebabToPascal(string $segment): string
     {
         $words = explode('-', $segment);
         $pascal = implode('', array_map(
-            fn (string $w) => ucfirst(strtolower($w)),
-            array_filter($words, fn (string $s) => $s !== ''),
+            static fn (string $w) => ucfirst(strtolower($w)),
+            array_filter($words, static fn (string $s) => $s !== ''),
         ));
 
         return $pascal !== '' ? $pascal : $segment;
@@ -120,18 +114,19 @@ final class Psr4ComponentResolver implements ComponentResolverInterface
      * Converts component name to relative class name.
      *
      * @param string $name Component name (e.g. "abc-def/ghi-jkl").
-     * @return string
+     *
+     * @return string Relative class name.
      */
     private function nameToRelativeClass(string $name): string
     {
         $segments = explode('/', $name);
         $parts = array_map(
             fn (string $segment) => $this->kebabToPascal($segment),
-            array_filter($segments, fn (string $s) => $s !== ''),
+            array_filter($segments, static fn (string $s) => $s !== ''),
         );
 
         if ($parts === []) {
-            throw new InvalidArgumentException("Invalid component name '{$name}'.");
+            throw new InvalidArgumentException(sprintf("Invalid component name '%s'.", $name));
         }
 
         return implode('\\', $parts);

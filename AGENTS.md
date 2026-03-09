@@ -94,7 +94,7 @@
   - The PSR-11–compatible container is used only for **constructor** dependencies (`document`, `engine`). Render-time data is **not** passed into `container->make()`; it is passed as the `$props` argument to `render($props)`.
 
 - **AbstractComponent**
-  - Constructor receives `HTMLDocument $document` and `Engine $engine`. A `NodeFactory` is created from the document and the engine’s `contentResolver` (for mixed→Node in createElement children).
+  - Constructor receives `HTMLDocument $document` and `Engine $engine`. A `NodeUtility` is created from the document and the engine’s `contentResolver` (for mixed→Node in createElement children).
   - `render(array $props = []): Generator` yields **mixed** values; the engine passes each through `contentResolver->toNodes()` and appends the resulting nodes.
   - Provides `component($name, $props)` returning a `ComponentBuilder` (for composing other components), and `placeChildren($props)` / `placeRegion($name, $props)` to read content set by a parent via `ComponentBuilder::withChildren()` / `withRegion()`.
   - Constants `PROP_CHILDREN` and `PROP_REGIONS` are the keys used in `$props` for children and named regions.
@@ -109,7 +109,7 @@
 - **Component resolution**
   - `ComponentResolverInterface` maps a string identifier (e.g. `"hello-page"`) to a `class-string<AbstractComponent>`. `Psr4ComponentResolver` is the PSR-4–based implementation (kebab-case name → class).
 
-- **NodeFactory**
+- **NodeUtility**
   - Optional helper for components: `createElement()`, `createText()`, `createDoctype()`. Children in `createElement()` are resolved via `ContentResolverInterface` (mixed → Node). Constructor: `(HTMLDocument $document, ContentResolverInterface $contents)`.
 
 - **NodableInterface**

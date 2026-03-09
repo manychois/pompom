@@ -30,7 +30,8 @@ final class ComponentBuilder implements NodableInterface
 
     /**
      * @param mixed $content Child content (resolved when rendering).
-     * @return self
+     *
+     * @return self The current instance for method chaining.
      */
     public function withChildren(mixed $content): self
     {
@@ -41,7 +42,8 @@ final class ComponentBuilder implements NodableInterface
     /**
      * @param string $name    Region name.
      * @param mixed  $content Region content (resolved when rendering).
-     * @return self
+     *
+     * @return self The current instance for method chaining.
      */
     public function withRegion(string $name, mixed $content): self
     {
@@ -49,16 +51,12 @@ final class ComponentBuilder implements NodableInterface
         return $this;
     }
 
-    /**
-     * @param Engine       $engine   Engine to resolve the component and content.
-     * @param HTMLDocument $document Document to create/import nodes in.
-     * @return Generator<int, \Dom\Node, mixed, void>
-     */
+    /** @inheritDoc */
     public function toNodes(Engine $engine, HTMLDocument $document): Generator
     {
         $props = array_merge($this->props, [
             AbstractComponent::PROP_CHILDREN => $this->children,
-            AbstractComponent::PROP_REGIONS => $this->regions,
+            AbstractComponent::PROP_REGIONS  => $this->regions,
         ]);
 
         $component = $engine->getComponent($this->name, $document);
