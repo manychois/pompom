@@ -26,7 +26,7 @@ composer require manychois/pompom
 
 ```php
 use Manychois\Pompom\Engine;
-use Manychois\Pompom\Psr4ComponentResolver;
+use Manychois\Pompom\Internal\Psr4ComponentResolver;
 
 $resolver = new Psr4ComponentResolver([
     'MyApp\Components' => __DIR__ . '/src/Components',

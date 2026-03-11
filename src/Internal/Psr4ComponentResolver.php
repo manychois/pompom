@@ -2,9 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Manychois\Pompom;
+namespace Manychois\Pompom\Internal;
 
 use InvalidArgumentException;
+use Manychois\Pompom\AbstractComponent;
+use Manychois\Pompom\ComponentResolverInterface as IComponentResolver;
 
 /**
  * Resolves a component identifier to its full class name using PSR-4 namespace and directory mapping.
@@ -13,7 +15,7 @@ use InvalidArgumentException;
  * and derives the relative class name "AbcDef\GhiJkl". The first matching base namespace whose directory
  * contains the corresponding PHP file is used. Other resolvers may map arbitrary names (e.g. "home") to classes.
  */
-final class Psr4ComponentResolver implements ComponentResolverInterface
+class Psr4ComponentResolver implements IComponentResolver
 {
     /** @var array<string, class-string<AbstractComponent>|null> */
     private array $cache = [];
@@ -28,7 +30,7 @@ final class Psr4ComponentResolver implements ComponentResolverInterface
     ) {
     }
 
-    #region implements ComponentResolverInterface
+    #region implements IComponentResolver
 
     /** @inheritDoc */
     public function has(string $name): bool
@@ -41,12 +43,12 @@ final class Psr4ComponentResolver implements ComponentResolverInterface
     {
         $class = $this->find($name);
         if ($class === null) {
-            throw new InvalidArgumentException(sprintf("No component class found for name '%s'.", $name));
+            throw new InvalidArgumentException(sprintf('No component class found for name "%s".', $name));
         }
         return $class;
     }
 
-    #endregion
+    #endregion implements IComponentResolver
 
     /**
      * Builds the filesystem path for a class file under the given base directory.
@@ -119,16 +121,11 @@ final class Psr4ComponentResolver implements ComponentResolverInterface
      */
     private function nameToRelativeClass(string $name): string
     {
-        $segments = explode('/', $name);
-        $parts = array_map(
-            fn (string $segment) => $this->kebabToPascal($segment),
-            array_filter($segments, static fn (string $s) => $s !== ''),
-        );
+        $parts = preg_split('~/+~', $name);
+        assert(is_array($parts));
+        $segments = array_filter($parts, static fn (string $s): bool => $s !== '');
 
-        if ($parts === []) {
-            throw new InvalidArgumentException(sprintf("Invalid component name '%s'.", $name));
-        }
-
-        return implode('\\', $parts);
+        $segments = array_map(fn (string $segment): string => $this->kebabToPascal($segment), $segments);
+        return implode('\\', $segments);
     }
 }

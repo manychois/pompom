@@ -8,6 +8,8 @@ use Dom\HTMLDocument;
 use Dom\Node;
 use Generator;
 use LogicException;
+use Manychois\Pompom\Internal\ComponentBuilder;
+use Manychois\Pompom\Internal\NodeUtility;
 
 /**
  * Base class for all Pompom DOM components.

@@ -7,26 +7,28 @@ namespace Manychois\Pompom;
 use DI\Container;
 use DI\ContainerBuilder;
 use Dom\HTMLDocument;
+use Manychois\Pompom\ContentResolverInterface as IContentResolver;
+use Manychois\Pompom\Internal\ContentResolver;
 use Psr\Container\ContainerInterface as IContainer;
 
 /**
  * Renders components into DOM documents.
  */
-final class Engine
+class Engine
 {
     private readonly Container $container;
 
-    public readonly ContentResolverInterface $contentResolver;
+    public readonly IContentResolver $contentResolver;
 
     /**
-     * @param ComponentResolverInterface    $components      Resolves component names to class names.
-     * @param ContentResolverInterface|null $contentResolver Converts mixed render output to Dom\Node.
-     *                                                     Defaults to ContentResolver($this).
-     * @param IContainer|null               $container       Optional PSR-11 container to resolve dependencies.
+     * @param ComponentResolverInterface $components      Resolves component names to class names.
+     * @param IContentResolver|null      $contentResolver Converts mixed render output to Dom\Node.
+     *                                                    Defaults to ContentResolver($this).
+     * @param IContainer|null            $container       Optional PSR-11 container to resolve dependencies.
      */
     public function __construct(
         private readonly ComponentResolverInterface $components,
-        ?ContentResolverInterface $contentResolver = null,
+        ?IContentResolver $contentResolver = null,
         ?IContainer $container = null,
     ) {
         $containerBuilder = new ContainerBuilder;

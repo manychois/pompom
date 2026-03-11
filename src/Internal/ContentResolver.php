@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Manychois\Pompom;
+namespace Manychois\Pompom\Internal;
 
 use Closure;
 use Dom\Element;
@@ -10,6 +10,9 @@ use Dom\HTMLDocument;
 use Dom\Node;
 use Generator;
 use InvalidArgumentException;
+use Manychois\Pompom\ContentResolverInterface as IContentResolver;
+use Manychois\Pompom\Engine;
+use Manychois\Pompom\NodableInterface;
 use TypeError;
 
 /**
@@ -18,7 +21,7 @@ use TypeError;
  * Use toNodes($document, $content) to turn strings, scalars, existing nodes,
  * or iterables into nodes suitable for appending to the document.
  */
-class ContentResolver implements ContentResolverInterface
+class ContentResolver implements IContentResolver
 {
     /**
      * Creates a new content resolver.
@@ -29,7 +32,7 @@ class ContentResolver implements ContentResolverInterface
     {
     }
 
-    #region implements ContentResolverInterface
+    #region implements IContentResolver
 
     /** @inheritDoc */
     public function changeAttributes(Element $element, mixed $name, mixed $value): void
@@ -129,7 +132,7 @@ class ContentResolver implements ContentResolverInterface
         }
     }
 
-    #endregion
+    #endregion implements IContentResolver
 
     /**
      * Cleans up a class name string by splitting it into tokens and filtering out empty tokens.

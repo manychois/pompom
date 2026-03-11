@@ -2,16 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Manychois\Pompom;
+namespace Manychois\Pompom\Internal;
 
 use Dom\HTMLDocument;
 use Generator;
+use Manychois\Pompom\AbstractComponent;
+use Manychois\Pompom\Engine;
+use Manychois\Pompom\NodableInterface as INodable;
 
 /**
  * Builds a reference to a component by name and props; use withChildren() / withRegion(),
  * then pass to content resolver via toNodes(engine, document).
  */
-final class ComponentBuilder implements NodableInterface
+class ComponentBuilder implements INodable
 {
     private mixed $children = null;
 
@@ -51,6 +54,8 @@ final class ComponentBuilder implements NodableInterface
         return $this;
     }
 
+    #region implements INodable
+
     /** @inheritDoc */
     public function toNodes(Engine $engine, HTMLDocument $document): Generator
     {
@@ -64,4 +69,6 @@ final class ComponentBuilder implements NodableInterface
             yield from $engine->contentResolver->toNodes($document, $content);
         }
     }
+
+    #endregion implements INodable
 }

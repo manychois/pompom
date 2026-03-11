@@ -44,6 +44,8 @@
 - **Lint (docblocks + line length)**: PHP_CodeSniffer
   - Config: `phpcs.xml.dist` (Squiz class/function comments, 120-char line limit)
   - Run: `composer lint`
+- **Auto-fix lint**: PHPCBF
+  - Run: `composer fix`
 
 ## Design notes (initial)
 
@@ -62,7 +64,7 @@
 - A **root component** (you may call it a view, template, or page component) is invoked by name, along with **properties/props** that customise its output.
 - Each component:
   - Receives input data via the `$props` argument to `render($props)` (not via the container).
-  - May use other components via `ComponentBuilder` (e.g. `component($name, $props)`) and slots via `placeChildren()` / `placeRegion()`.
+  - May use other components via `Internal\ComponentBuilder` (e.g. `component($name, $props)`) and slots via `placeChildren()` / `placeRegion()`.
   - Yields mixed output (nodes, scalars, or component references); the engine converts each item to `Dom\Node` via `ContentResolver` and appends them to the document.
 - The render pipeline:
   1. The engine creates a **completely empty** `Dom\HTMLDocument` (no `<html>`, `<head>`, or `<body>`).
@@ -88,7 +90,7 @@
 - **Engine**
   - Creates an empty `Dom\HTMLDocument`, resolves the root component by name via `ComponentResolverInterface`, instantiates it via the container with only `document` and `engine` (no render-time props in the container), then iterates `component->render($props)` and appends nodes.
   - Converts each yielded item from `render()` to nodes using `ContentResolverInterface::toNodes($document, $item)` and appends those nodes to the document.
-  - Exposes `contentResolver` (default `ContentResolver`) and `getComponent($name, $document)` for resolving component references (e.g. from `ComponentBuilder`).
+  - Exposes `contentResolver` (default `ContentResolver`) and `getComponent($name, $document)` for resolving component references (e.g. from `Internal\ComponentBuilder`).
 
 - **Container and instantiation**
   - The PSR-11–compatible container is used only for **constructor** dependencies (`document`, `engine`). Render-time data is **not** passed into `container->make()`; it is passed as the `$props` argument to `render($props)`.
@@ -96,15 +98,15 @@
 - **AbstractComponent**
   - Constructor receives `HTMLDocument $document` and `Engine $engine`. A `NodeUtility` is created from the document and the engine’s `contentResolver` (for mixed→Node in createElement children).
   - `render(array $props = []): Generator` yields **mixed** values; the engine passes each through `contentResolver->toNodes()` and appends the resulting nodes.
-  - Provides `component($name, $props)` returning a `ComponentBuilder` (for composing other components), and `placeChildren($props)` / `placeRegion($name, $props)` to read content set by a parent via `ComponentBuilder::withChildren()` / `withRegion()`.
+  - Provides `component($name, $props)` returning an `Internal\ComponentBuilder` (for composing other components), and `placeChildren($props)` / `placeRegion($name, $props)` to read content set by a parent via `Internal\ComponentBuilder::withChildren()` / `withRegion()`.
   - Constants `PROP_CHILDREN` and `PROP_REGIONS` are the keys used in `$props` for children and named regions.
 
-- **ComponentBuilder**
+- **Internal\ComponentBuilder**
   - Represents a reference to a component by **name** and default **props**. Supports `withChildren(mixed)` and `withRegion(string $name, mixed)` for slots.
   - Implements `NodableInterface`; `toNodes(Engine, HTMLDocument)` merges children/regions into props, gets the component via `engine->getComponent($name, $document)`, runs `render($props)`, and yields nodes via the engine’s content resolver.
 
 - **ContentResolver / ContentResolverInterface**
-  - Converts **mixed** content to zero or more `Dom\Node` for a given document. Handles: `null`, scalars (text node), `Dom\Node` (yielded; import if needed), iterables (recursive), `NodableInterface` (e.g. ComponentBuilder), and `Closure` (invoke then resolve). Other types throw `TypeError`.
+  - Converts **mixed** content to zero or more `Dom\Node` for a given document. Handles: `null`, scalars (text node), `Dom\Node` (yielded; import if needed), iterables (recursive), `NodableInterface` (e.g. `Internal\ComponentBuilder`), and `Closure` (invoke then resolve). Other types throw `TypeError`.
 
 - **Component resolution**
   - `ComponentResolverInterface` maps a string identifier (e.g. `"hello-page"`) to a `class-string<AbstractComponent>`. `Psr4ComponentResolver` is the PSR-4–based implementation (kebab-case name → class).
@@ -113,7 +115,7 @@
   - Optional helper for components: `createElement()`, `createText()`, `createDoctype()`. Children in `createElement()` are resolved via `ContentResolverInterface` (mixed → Node). Constructor: `(HTMLDocument $document, ContentResolverInterface $contents)`.
 
 - **NodableInterface**
-  - Objects that can be turned into nodes in a given document: `toNodes(Engine $engine, HTMLDocument $document): Generator`. Used by `ContentResolver` and by `ComponentBuilder`.
+  - Objects that can be turned into nodes in a given document: `toNodes(Engine $engine, HTMLDocument $document): Generator`. Used by `ContentResolver` and by `Internal\ComponentBuilder`.
 
 - **Prettier (HTML indentation)**
   - Inserts whitespace so `saveHtml()` output is indented. **Four positions** (each insert or not): **0** before-start (before opening tag, inserted by parent), **1** after-start (after open tag, before first child), **2** before-end (after last child, before closing tag), **3** after-end (after closing tag, inserted by parent).
