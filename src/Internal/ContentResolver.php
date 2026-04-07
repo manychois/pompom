@@ -47,7 +47,7 @@ class ContentResolver implements IContentResolver
             return;
         }
 
-        if ($name === 'class' || strtolower($name) === 'classname') {
+        if ($name === 'class') {
             if (is_string($value) || is_array($value)) {
                 /** @var string|array<bool|string> $value */
                 $this->setClassName($element, $value);

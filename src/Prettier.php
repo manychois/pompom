@@ -277,11 +277,14 @@ class Prettier
      * @param HTMLDocument $document Document to create text nodes from.
      * @param Comment      $comment  Comment node to format.
      * @param int          $depth    Nesting depth (0 = root).
+     * 
+     * @return array{0: bool, 1: bool} Whether indent before start and after end have been applied.
      */
-    protected function formatComment(HTMLDocument $document, Comment $comment, int $depth): void
+    protected function formatComment(HTMLDocument $document, Comment $comment, int $depth): array
     {
         $this->indentBeforeStart($document, $comment, $depth);
         $this->indentAfterEnd($document, $comment, $depth);
+        return [true, true];
     }
 
     /**
@@ -290,29 +293,49 @@ class Prettier
      * @param HTMLDocument $document Document to create text nodes from.
      * @param Element      $element  Element to format.
      * @param int          $depth    Nesting depth (0 = root).
+     * 
+     * @return array{0: bool, 1: bool} Whether indent before start and after end have been applied.
      */
-    protected function formatElement(HTMLDocument $document, Element $element, int $depth): void
+    protected function formatElement(HTMLDocument $document, Element $element, int $depth): array
     {
         $pattern = $this->elementPatternMap[$element->localName] ?? [true, true, true, true];
         [$beforeStart, $afterStart, $beforeEnd, $afterEnd] = $pattern;
 
-        if ($beforeStart) {
-            $this->indentBeforeStart($document, $element, $depth);
-        }
+        $hasInnerBs = false;
+        $hasInnerAe = false;
         if ($element->hasChildNodes()) {
+            foreach ($element->childNodes as $child) {
+                [$innerBs, $innerAe] = $this->formatNode($document, $child, $depth + 1);
+                $hasInnerBs = $hasInnerBs || $innerBs;
+                $hasInnerAe = $hasInnerAe || $innerAe;
+            }
+
+            if ($hasInnerBs) {
+                $beforeStart = true;
+                $afterStart = true;
+            }
+            if ($hasInnerAe) {
+                $beforeEnd = true;
+                $afterEnd = true;
+            }
+
             if ($afterStart) {
                 $this->indentAfterStart($document, $element, $depth + 1);
-            }
-            foreach ($element->childNodes as $child) {
-                $this->formatNode($document, $child, $depth + 1);
             }
             if ($beforeEnd) {
                 $this->indentBeforeEnd($document, $element, $depth);
             }
         }
+
+        if ($beforeStart) {
+            $this->indentBeforeStart($document, $element, $depth);
+        }
+
         if ($afterEnd) {
             $this->indentAfterEnd($document, $element, $depth);
         }
+
+        return [$beforeStart, $afterEnd];
     }
 
     /**
@@ -321,14 +344,18 @@ class Prettier
      * @param HTMLDocument $document Document to create text nodes from.
      * @param Node         $node     Node to format.
      * @param int          $depth    Nesting depth (0 = root).
+     * 
+     * @return array{0: bool, 1: bool} Whether indent before start and after end have been applied.
      */
-    protected function formatNode(HTMLDocument $document, Node $node, int $depth): void
+    protected function formatNode(HTMLDocument $document, Node $node, int $depth): array
     {
         if ($node instanceof Element) {
-            $this->formatElement($document, $node, $depth);
-        } elseif ($node instanceof Comment) {
-            $this->formatComment($document, $node, $depth);
+            return $this->formatElement($document, $node, $depth);
         }
+        if ($node instanceof Comment) {
+            return $this->formatComment($document, $node, $depth);
+        }
+        return [false, false];
     }
 
     /**
@@ -341,7 +368,7 @@ class Prettier
     protected function getIndent(int $depth): string
     {
         if (!isset($this->indentCache[$depth])) {
-            $this->indentCache[$depth] = "\n" . str_repeat($this->indentStyle, $depth);
+            $this->indentCache[$depth] = "\n" . ($depth > 0 ? str_repeat($this->indentStyle, $depth) : '');
         }
 
         return $this->indentCache[$depth];

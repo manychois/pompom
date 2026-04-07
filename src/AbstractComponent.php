@@ -115,7 +115,7 @@ abstract class AbstractComponent
      * Creates a component builder.
      *
      * @param string       $name     Component name (resolved by the engine).
-     * @param array<mixed> $props    Default props for the component.
+     * @param array<mixed> $props    Properties for the component.
      * @param mixed        $children Optional children content.
      * @param mixed        $regions  Optional region contents (key-value pairs).
      *
@@ -123,7 +123,7 @@ abstract class AbstractComponent
      */
     final protected function component(
         string $name,
-        array $props = [],
+        array $props = ['...'],
         mixed $children = null,
         mixed $regions = [],
     ): ComponentBuilder {
