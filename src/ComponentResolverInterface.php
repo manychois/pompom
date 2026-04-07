@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Manychois\Pompom;
 
+use InvalidArgumentException;
+
 /**
  * Resolves a component identifier to its full class name.
  *
@@ -27,7 +29,7 @@ interface ComponentResolverInterface
      *
      * @return class-string<AbstractComponent>
      *
-     * @throws \InvalidArgumentException When the name cannot be resolved.
+     * @throws InvalidArgumentException When the name cannot be resolved.
      */
     public function resolve(string $name): string;
 }

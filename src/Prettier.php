@@ -277,7 +277,7 @@ class Prettier
      * @param HTMLDocument $document Document to create text nodes from.
      * @param Comment      $comment  Comment node to format.
      * @param int          $depth    Nesting depth (0 = root).
-     * 
+     *
      * @return array{0: bool, 1: bool} Whether indent before start and after end have been applied.
      */
     protected function formatComment(HTMLDocument $document, Comment $comment, int $depth): array
@@ -293,7 +293,7 @@ class Prettier
      * @param HTMLDocument $document Document to create text nodes from.
      * @param Element      $element  Element to format.
      * @param int          $depth    Nesting depth (0 = root).
-     * 
+     *
      * @return array{0: bool, 1: bool} Whether indent before start and after end have been applied.
      */
     protected function formatElement(HTMLDocument $document, Element $element, int $depth): array
@@ -344,7 +344,7 @@ class Prettier
      * @param HTMLDocument $document Document to create text nodes from.
      * @param Node         $node     Node to format.
      * @param int          $depth    Nesting depth (0 = root).
-     * 
+     *
      * @return array{0: bool, 1: bool} Whether indent before start and after end have been applied.
      */
     protected function formatNode(HTMLDocument $document, Node $node, int $depth): array

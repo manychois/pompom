@@ -31,7 +31,7 @@ class Engine
         ?IContentResolver $contentResolver = null,
         ?IContainer $container = null,
     ) {
-        $containerBuilder = new ContainerBuilder;
+        $containerBuilder = new ContainerBuilder();
         if ($container !== null) {
             $containerBuilder->wrapContainer($container);
         }

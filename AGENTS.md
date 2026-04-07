@@ -46,6 +46,7 @@
   - Run: `composer lint`
 - **Auto-fix lint**: PHPCBF
   - Run: `composer fix`
+- **Coding style (canonical reference)**: [`documentation/internal/php-coding-standard.md`](documentation/internal/php-coding-standard.md) — use this for PHP style beyond what tooling enforces here.
 
 ## Design notes (initial)
 
@@ -140,6 +141,7 @@
 
 - High-level overview and install instructions live in `README.md`.
 - Implementation details, conventions, and evolving requirements live in this `AGENTS.md`.
+- **Technical writing**: follow [`documentation/internal/diataxis-framework-reference.md`](documentation/internal/diataxis-framework-reference.md) when authoring or restructuring technical documentation (Diátaxis framework).
 - When requirements change, update this file first, then align code/tests.
 
 ## Open questions / future decisions
