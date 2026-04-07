@@ -50,6 +50,8 @@ Components extend `AbstractComponent`, receive `HTMLDocument $document` and `Eng
 
 ## Development
 
+If you cloned without submodules, run `git submodule update --init documentation/internal` so shared documentation under `documentation/internal/` is present.
+
 ```bash
 composer install
 composer test      # PHPUnit

@@ -127,8 +127,9 @@ abstract class AbstractComponent
         mixed $children = null,
         mixed $regions = [],
     ): ComponentBuilder {
-        if (in_array('...', $props, true)) {
-            unset($props['...']);
+        $placeholderKey = array_search('...', $props, true);
+        if ($placeholderKey !== false) {
+            unset($props[$placeholderKey]);
             $props = array_merge($this->props, $props);
         }
         /** @var array<string, mixed> $props */

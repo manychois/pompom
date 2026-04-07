@@ -1,0 +1,3 @@
+[submodule "documentation/internal"]
+	path = documentation/internal
+	url = ../manychois-knowledge

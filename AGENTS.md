@@ -46,7 +46,7 @@
   - Run: `composer lint`
 - **Auto-fix lint**: PHPCBF
   - Run: `composer fix`
-- **Coding style (canonical reference)**: [`documentation/internal/php-coding-standard.md`](documentation/internal/php-coding-standard.md) — use this for PHP style beyond what tooling enforces here.
+- **Coding style (canonical reference)**: [`documentation/internal/php-coding-standard.md`](documentation/internal/php-coding-standard.md) — shared copy via git submodule; see [Documentation strategy](#documentation-strategy).
 
 ## Design notes (initial)
 
@@ -141,6 +141,7 @@
 
 - High-level overview and install instructions live in `README.md`.
 - Implementation details, conventions, and evolving requirements live in this `AGENTS.md`.
+- **`documentation/internal/`** is a **git submodule** of the shared **manychois-knowledge** repository (same layout as `manychois-knowledge` beside this repo on disk; publish that repo to your remote and point the submodule URL there for CI and other machines). After cloning Pompom, run `git submodule update --init documentation/internal`, or clone with `git clone --recurse-submodules`. To edit those two guides for all consuming projects, commit in `manychois-knowledge` and update the submodule pointer here.
 - **Technical writing**: follow [`documentation/internal/diataxis-framework-reference.md`](documentation/internal/diataxis-framework-reference.md) when authoring or restructuring technical documentation (Diátaxis framework).
 - When requirements change, update this file first, then align code/tests.
 
