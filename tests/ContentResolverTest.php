@@ -194,6 +194,19 @@ final class ContentResolverTest extends TestCase
     }
 
     #[Test]
+    public function change_classlist_adds_tokens_from_list_of_strings(): void
+    {
+        $document = HTMLDocument::createEmpty();
+        $engine = $this->psr4Engine();
+        $resolver = new ContentResolver($engine);
+        $element = $document->createElement('div');
+        $resolver->changeClasslist($element, ['foo bar', 'baz']);
+        self::assertTrue($element->classList->contains('foo'));
+        self::assertTrue($element->classList->contains('bar'));
+        self::assertTrue($element->classList->contains('baz'));
+    }
+
+    #[Test]
     public function change_classlist_adds_removes_via_associative_array(): void
     {
         $document = HTMLDocument::createEmpty();
@@ -245,6 +258,30 @@ final class ContentResolverTest extends TestCase
         $resolver->setClassName($element, ['a' => true, 'old' => false]);
         self::assertTrue($element->classList->contains('a'));
         self::assertFalse($element->classList->contains('old'));
+    }
+
+    #[Test]
+    public function change_attributes_throws_when_value_not_scalar_for_non_class_attribute(): void
+    {
+        $document = HTMLDocument::createEmpty();
+        $engine = $this->psr4Engine();
+        $resolver = new ContentResolver($engine);
+        $element = $document->createElement('div');
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Cannot convert stdClass to an attribute value.');
+        $resolver->changeAttributes($element, 'data-x', new stdClass());
+    }
+
+    #[Test]
+    public function change_classlist_throws_type_error_for_non_string_numeric_list_entry(): void
+    {
+        $document = HTMLDocument::createEmpty();
+        $engine = $this->psr4Engine();
+        $resolver = new ContentResolver($engine);
+        $element = $document->createElement('div');
+        $this->expectException(TypeError::class);
+        $this->expectExceptionMessage('Cannot convert boolean to a class name.');
+        $resolver->changeClasslist($element, [42]);
     }
 
 }

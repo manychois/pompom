@@ -384,7 +384,9 @@ class Prettier
     protected function indentAfterEnd(HTMLDocument $document, Node $node, int $depth): void
     {
         $parent = $node->parentNode;
-        if ($parent === null) {
+        assert($parent !== null);
+        // HTMLDocument must not take Text nodes as direct children (e.g. documentElement is not <html>).
+        if ($parent instanceof HTMLDocument) {
             return;
         }
         $next = $node->nextSibling;
@@ -440,7 +442,8 @@ class Prettier
     protected function indentBeforeStart(HTMLDocument $document, Node $node, int $depth): void
     {
         $parent = $node->parentNode;
-        if ($parent === null) {
+        assert($parent !== null);
+        if ($parent instanceof HTMLDocument) {
             return;
         }
         $prev = $node->previousSibling;

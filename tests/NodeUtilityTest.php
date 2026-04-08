@@ -53,6 +53,15 @@ final class NodeUtilityTest extends TestCase
     }
 
     #[Test]
+    public function change_attributes_treats_numeric_keys_as_boolean_attribute_names(): void
+    {
+        $u = $this->utility();
+        $el = $u->createElement('div', [0 => 'hidden', 1 => 'inert']);
+        self::assertTrue($el->hasAttribute('hidden'));
+        self::assertTrue($el->hasAttribute('inert'));
+    }
+
+    #[Test]
     public function create_comment_returns_comment_in_document(): void
     {
         $u = $this->utility();

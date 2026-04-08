@@ -11,6 +11,7 @@ use Manychois\Pompom\Internal\Psr4ComponentResolver;
 use Manychois\PompomTests\Fixtures\Psr4\HelloPage;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Psr\Container\ContainerInterface;
 
 /**
  * Tests for {@see Engine}.
@@ -52,5 +53,28 @@ final class EngineTest extends TestCase
     {
         $engine = $this->engine();
         self::assertInstanceOf(ContentResolver::class, $engine->contentResolver);
+    }
+
+    #[Test]
+    public function construct_wraps_optional_psr11_parent_container(): void
+    {
+        $resolver = new Psr4ComponentResolver([
+            'Manychois\\PompomTests\\Fixtures\\Psr4\\' => __DIR__ . '/Fixtures/Psr4',
+        ]);
+        $parent = new class () implements ContainerInterface {
+            public function get(string $id): never
+            {
+                throw new \RuntimeException('Parent container must not resolve component dependencies.');
+            }
+
+            public function has(string $id): bool
+            {
+                return false;
+            }
+        };
+        $engine = new Engine($resolver, null, $parent);
+        $document = HTMLDocument::createEmpty();
+        $component = $engine->getComponent('hello-page', $document);
+        self::assertInstanceOf(HelloPage::class, $component);
     }
 }

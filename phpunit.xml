@@ -15,5 +15,9 @@
     <include>
       <directory suffix=".php">src</directory>
     </include>
+    <exclude>
+      <!-- Trait files are thin glue; cover behaviour via concrete classes instead. -->
+      <directory suffix="Trait.php">src</directory>
+    </exclude>
   </source>
 </phpunit>
