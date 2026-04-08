@@ -17,6 +17,7 @@ use Manychois\PompomTests\Fixtures\RegionEchoComponent;
 use Manychois\PompomTests\Fixtures\RejectingComponentResolver;
 use Manychois\PompomTests\Fixtures\YieldsChildComponent;
 use Manychois\PompomTests\Fixtures\YieldsRegionChildComponent;
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -24,7 +25,8 @@ use PHPUnit\Framework\TestCase;
  */
 final class AbstractComponentTest extends TestCase
 {
-    public function test_render_yields_resolved_text_nodes(): void
+    #[Test]
+    public function render_yields_resolved_text_nodes(): void
     {
         $document = HTMLDocument::createEmpty();
         $engine = $this->createEngine();
@@ -48,7 +50,8 @@ final class AbstractComponentTest extends TestCase
         self::assertSame('world', $nodes[2]->textContent);
     }
 
-    public function test_render_leaves_only_custom_keys_in_props_for_get_content(): void
+    #[Test]
+    public function render_leaves_only_custom_keys_in_props_for_get_content(): void
     {
         $document = HTMLDocument::createEmpty();
         $engine = $this->createEngine();
@@ -73,7 +76,8 @@ final class AbstractComponentTest extends TestCase
         self::assertSame('{"key":"value"}', $nodes[0]->textContent);
     }
 
-    public function test_children_yields_nodes_from_prop_children_when_provided(): void
+    #[Test]
+    public function children_yields_nodes_from_prop_children_when_provided(): void
     {
         $document = HTMLDocument::createEmpty();
         $engine = $this->createEngine();
@@ -98,7 +102,8 @@ final class AbstractComponentTest extends TestCase
         self::assertSame('inner', $nodes[0]->textContent);
     }
 
-    public function test_children_yields_fallback_nodes_when_prop_children_absent(): void
+    #[Test]
+    public function children_yields_fallback_nodes_when_prop_children_absent(): void
     {
         $document = HTMLDocument::createEmpty();
         $engine = $this->createEngine();
@@ -120,7 +125,8 @@ final class AbstractComponentTest extends TestCase
         self::assertSame('fallback', $nodes[0]->textContent);
     }
 
-    public function test_children_throws_logic_exception_when_called_twice(): void
+    #[Test]
+    public function children_throws_logic_exception_when_called_twice(): void
     {
         $document = HTMLDocument::createEmpty();
         $engine = $this->createEngine();
@@ -142,7 +148,8 @@ final class AbstractComponentTest extends TestCase
         iterator_to_array($component->render([]), false);
     }
 
-    public function test_has_children_returns_bool_matching_prop_children_presence(): void
+    #[Test]
+    public function has_children_returns_bool_matching_prop_children_presence(): void
     {
         $document = HTMLDocument::createEmpty();
         $engine = $this->createEngine();
@@ -176,7 +183,8 @@ final class AbstractComponentTest extends TestCase
         self::assertSame('no', $withoutNodes[0]->textContent);
     }
 
-    public function test_region_yields_nodes_from_named_region_when_provided(): void
+    #[Test]
+    public function region_yields_nodes_from_named_region_when_provided(): void
     {
         $document = HTMLDocument::createEmpty();
         $engine = $this->createEngine();
@@ -203,7 +211,8 @@ final class AbstractComponentTest extends TestCase
         self::assertSame('sidebar text', $nodes[0]->textContent);
     }
 
-    public function test_region_yields_fallback_nodes_when_region_absent(): void
+    #[Test]
+    public function region_yields_fallback_nodes_when_region_absent(): void
     {
         $document = HTMLDocument::createEmpty();
         $engine = $this->createEngine();
@@ -225,7 +234,8 @@ final class AbstractComponentTest extends TestCase
         self::assertSame('default', $nodes[0]->textContent);
     }
 
-    public function test_region_throws_logic_exception_when_called_twice_for_same_name(): void
+    #[Test]
+    public function region_throws_logic_exception_when_called_twice_for_same_name(): void
     {
         $document = HTMLDocument::createEmpty();
         $engine = $this->createEngine();
@@ -247,7 +257,8 @@ final class AbstractComponentTest extends TestCase
         iterator_to_array($component->render([]), false);
     }
 
-    public function test_has_region_returns_bool_matching_named_region_presence(): void
+    #[Test]
+    public function has_region_returns_bool_matching_named_region_presence(): void
     {
         $document = HTMLDocument::createEmpty();
         $engine = $this->createEngine();
@@ -273,7 +284,8 @@ final class AbstractComponentTest extends TestCase
         self::assertSame('10', $nodes[0]->textContent);
     }
 
-    public function test_component_merges_parent_props_when_spread_placeholder_in_props_array(): void
+    #[Test]
+    public function component_merges_parent_props_when_spread_placeholder_in_props_array(): void
     {
         $document = HTMLDocument::createEmpty();
         $map = [
@@ -290,7 +302,8 @@ final class AbstractComponentTest extends TestCase
         self::assertSame(['fromParent' => 1, 'extra' => 2], $decoded);
     }
 
-    public function test_component_child_receives_prop_children_after_engine_render(): void
+    #[Test]
+    public function component_child_receives_prop_children_after_engine_render(): void
     {
         $map = [
             'root'  => YieldsChildComponent::class,
@@ -302,7 +315,8 @@ final class AbstractComponentTest extends TestCase
         self::assertStringContainsString('inner-from-parent', $document->saveHtml());
     }
 
-    public function test_component_child_receives_prop_regions_after_engine_render(): void
+    #[Test]
+    public function component_child_receives_prop_regions_after_engine_render(): void
     {
         $map = [
             'root'            => YieldsRegionChildComponent::class,

@@ -61,7 +61,7 @@ abstract class AbstractComponent
     }
 
     /**
-     * Implementations must yield output (mixed); the engine converts each item to a node.
+     * Renders the component by resolving its content into a generator of DOM nodes.
      *
      * @param array<string, mixed> $props Render-time properties (e.g. from the engine).
      *
@@ -140,14 +140,7 @@ abstract class AbstractComponent
     }
 
     /**
-     * Implementations must yield output (mixed); the engine converts each item to a node.
-     *
-     * @return Generator<int, mixed, mixed, void> The content to render.
-     */
-    abstract protected function getContent(): Generator;
-
-    /**
-     * Whether the owner component provided any children content.
+     * Returns whether the owner component provided any children content.
      *
      * @return bool Whether the owner component provided any children content.
      */
@@ -158,7 +151,7 @@ abstract class AbstractComponent
     }
 
     /**
-     * Whether the owner component provided content for the given region.
+     * Returns whether the owner component provided content for the given region.
      *
      * @param string $name Region name.
      *
@@ -199,6 +192,13 @@ abstract class AbstractComponent
 
         return $result;
     }
+
+    /**
+     * Yields the component's raw content items; the engine converts each item to a node via ContentResolver.
+     *
+     * @return Generator<int, mixed, mixed, void> The content to render.
+     */
+    abstract protected function getContent(): Generator;
 
     /**
      * Resolves raw children content to a list of nodes (once).
