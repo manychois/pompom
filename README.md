@@ -1,35 +1,29 @@
 # Pompom
 
-Pompom is a modern PHP library from **manychois** for building HTML templates with a **component-based, DOM-first** approach. It uses PHP 8.5+ and the `Dom\*` namespaced APIs (not legacy `DOMDocument`) so you can construct reusable, testable HTML in pure PHP—no string concatenation or separate templating syntax.
+**Pompom** is a PHP library for building HTML with a **component-based, DOM-first** workflow: you compose templates from PHP classes that yield `Dom\*` nodes, not from string assembly or a separate template language.
 
-## Requirements
+---
 
-- **PHP** >= 8.5  
-- **ext-dom** (enabled)
+## Get started
 
-## Installation
+You will install the package and render one named component to a `Dom\HTMLDocument`, then print HTML. You need PHP 8.5+ with `ext-dom`.
+
+### 1. Install
 
 ```bash
 composer require manychois/pompom
 ```
 
-## How it works
+### 2. Render a root component
 
-1. You register a **component resolver** (e.g. `Psr4ComponentResolver`) that maps names like `"hello-page"` to component classes.
-2. The **engine** creates an empty `Dom\HTMLDocument` and resolves the root component by name.
-3. The engine calls **`render($props)`** on the component. Components receive **props only in `render()`**, not via the container; the container is used only for constructor dependencies (`document`, `engine`).
-4. Each component **yields** output (nodes, scalars, or nested component references). The engine converts each item to `Dom\Node` via a **content resolver** and appends them to the document.
-5. The **root component is responsible for the full document structure** (`<html>`, `<head>`, `<body>`). The engine does not add them.
-6. You get back a **`Dom\HTMLDocument`** and output it with `saveHtml()`, `saveHtmlFile()`, etc.
-
-## Quick example
+Register a **component resolver** (here `Psr4ComponentResolver`) so a string name maps to a component class. Build an **engine**, call **`render`**, then serialize:
 
 ```php
 use Manychois\Pompom\Engine;
 use Manychois\Pompom\Internal\Psr4ComponentResolver;
 
 $resolver = new Psr4ComponentResolver([
-    'MyApp\Components' => __DIR__ . '/src/Components',
+    'MyApp\\Components' => __DIR__ . '/src/Components',
 ]);
 
 $engine = new Engine($resolver);
@@ -38,29 +32,59 @@ $document = $engine->render('hello-page', ['name' => 'World']);
 echo $document->saveHtml();
 ```
 
-Components extend `AbstractComponent`, receive `HTMLDocument $document` and `Engine $engine` in the constructor, and implement **`render(array $props = []): Generator`**. Use the injected **`NodeUtility`** (e.g. `$this->nodeUtility->createElement(...)`) to build nodes, and **`component($name, $props)`** plus **`withChildren()`** / **`withRegion()`** to compose other components and slots. See [AGENTS.md](AGENTS.md) for full architecture and contracts.
+You should see HTML produced by your `hello-page` component (that class must exist at the path implied by your PSR-4 mapping).
 
-## Features
+---
 
-- **DOM-first**: Build HTML with `Dom\Document`, `Dom\Element`, `Dom\HTMLDocument`; output via `saveHtml()` / `saveHtmlFile()`.
-- **Composable components**: Reference other components by name; pass props and slot content (children, named regions).
-- **Mixed output**: Components yield nodes, strings, or component references; the content resolver turns everything into nodes.
-- **Testable**: Assert on the DOM tree or serialized HTML in PHPUnit.
-- **Optional Prettier**: Format the document for readable HTML before output.
+## How to …
 
-## Development
+### Run tests and quality checks in this repository
 
-If you cloned without submodules, run `git submodule update --init documentation/internal` so shared documentation under `documentation/internal/` is present.
+If `documentation/internal/` is missing, initialize the submodule:
+
+```bash
+git submodule update --init documentation/internal
+```
+
+Then:
 
 ```bash
 composer install
-composer test      # PHPUnit
-composer analyse   # PHPStan (max level, strict rules)
-composer lint      # PHP_CodeSniffer (docblocks, 120-char lines)
+composer test    # PHPUnit (with coverage)
+composer phpstan # static analysis
+composer phpcs   # style and docblocks
 ```
 
-Implementation details, conventions, and code knowledge are in **[AGENTS.md](AGENTS.md)**.
+---
 
-## License
+## About Pompom
 
-MIT. See [LICENSE](LICENSE).
+Pompom is built around **PHP 8.5+** and the modern **`Dom\*` API** (`Dom\HTMLDocument`, `Dom\Element`, …), not the legacy `DOMDocument` stack. The goal is reusable, testable pieces that return real DOM trees.
+
+**Resolution and rendering.** You map arbitrary component names (e.g. `hello-page`) to classes via a **component resolver**. The **engine** creates an **empty** `Dom\HTMLDocument`, instantiates the root component, and iterates **`render($props)`**. Constructor injection gives only shared dependencies such as the document and engine; **render-time data is always `$props`**, not the DI container.
+
+**What components output.** Components **yield** mixed values (text, nodes, nested component references). A **content resolver** turns each chunk into `Dom\Node` instances and the engine appends them. The **root component** is responsible for the full document shape (`<html>`, `<head>`, `<body>` if you need a full page); the engine does not insert those for you.
+
+**Composition.** Typical pieces include **`AbstractComponent`**, **`NodeUtility`** for element helpers, **`component()`** / **`ComponentBuilder`** for child components, and **children** / **named regions** for slot-like content.
+
+**Why DOM-first.** Output stays structured and easy to assert in tests (`saveHtml()`, walking nodes) and avoids ad-hoc concatenation; optional **Prettier** can indent HTML for readability before serialization.
+
+---
+
+## Reference
+
+| | |
+| --- | --- |
+| **Package** | `manychois/pompom` |
+| **PHP** | `>= 8.5` |
+| **Extensions** | `ext-dom` |
+
+| Symbol | Role |
+| --- | --- |
+| `Engine` | Builds an empty `Dom\HTMLDocument`, resolves the root component, consumes `render()` output. |
+| `ComponentResolverInterface` | Maps a component name to a component class (e.g. `Psr4ComponentResolver`). |
+| `AbstractComponent` | Base for components; `render()` / `getContent()` pipeline, `component()`, children and regions. |
+| `ContentResolverInterface` | Turns mixed yielded content into `Dom\Node` for a given document. |
+| `Prettier` | Optional in-place formatting before `saveHtml()`. |
+
+Serialization uses `Dom\HTMLDocument` methods such as `saveHtml()` and `saveHtmlFile()`.
